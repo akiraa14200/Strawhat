@@ -607,16 +607,16 @@ class StreamGurdActivity : Activity() {
             }
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, page: String?) {
-                    if (musicPanel === panel) musicFab?.visibility = View.GONE
+                    if (musicEmbedView === view) musicFab?.visibility = View.GONE
                 }
                 override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                     if (request?.isForMainFrame == true) runOnUiThread {
-                        if (musicPanel === panel) failMusicPlayer("Music player page failed to load")
+                        if (musicEmbedView === view) failMusicPlayer("Music player page failed to load")
                     }
                 }
                 override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, response: WebResourceResponse?) {
                     if (request?.isForMainFrame == true && (response?.statusCode ?: 200) >= 400) runOnUiThread {
-                        if (musicPanel === panel) failMusicPlayer("Music player returned HTTP ${response?.statusCode}")
+                        if (musicEmbedView === view) failMusicPlayer("Music player returned HTTP ${response?.statusCode}")
                     }
                 }
             }
@@ -736,12 +736,12 @@ class StreamGurdActivity : Activity() {
         val source = Rect(location[0], location[1], location[0] + root.width, location[1] + root.height)
         menu.alpha = 0f
         toggle.alpha = 0f
-        PixelCopy.request(window, source, bitmap, { result ->
+        PixelCopy.request(window, source, bitmap, copyCallback@{ result ->
             menu.alpha = 1f
             toggle.alpha = 1f
             if (request != menuBackdropRequest || menu.visibility != View.VISIBLE) {
                 bitmap.recycle()
-                return@request
+                return@copyCallback
             }
             if (result == PixelCopy.SUCCESS) {
                 val backdrop = ImageView(this).apply {
