@@ -251,9 +251,6 @@ class StreamGurdActivity : Activity() {
         topActionsToggle.setOnClickListener {
             topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
-        topActionsToggle.setOnClickListener {
-            topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-        }
 
         statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(10), dp(5), dp(10), dp(5)); background = darkGlassShape(0x991A1A1D.toInt(), 16) }
         val statusDot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(169, 155, 255)) } }
@@ -303,7 +300,7 @@ class StreamGurdActivity : Activity() {
             setTextColor(Color.rgb(18, 16, 27))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(169, 155, 255)
+                setColor(Color.rgb(169, 155, 255))
                 setStroke(dp(1), Color.argb(90, 255, 255, 255))
             }
             elevation = dp(20).toFloat()
@@ -839,7 +836,7 @@ class StreamGurdActivity : Activity() {
                 6 -> { CookieManager.getInstance().removeAllCookies(null); web.clearCache(true); web.clearHistory(); toast("Browser data cleared") }
                 7 -> showAbout()
                 8 -> showPolicy("Privacy policy", "Strawhat stores bookmarks, browsing history, catalogue cache and your last opened page locally on this device. Website requests go directly to the sites you visit. The app does not operate an account system or sell personal data. Websites may use their own cookies and tracking technologies. Clearing browser data removes local cookies, cache and history.")
-                9 -> showPolicy("Terms of use", "Use StreamGurd lawfully and respect each website's terms, copyright and access rules. You are responsible for the websites and content you choose to visit. Redirect protection prevents pop-up windows and links that try to open new tabs; it does not block advertisements or guarantee protection from every redirect. The app is provided as-is. Do not use it to bypass access controls or infringe anyone's rights.")
+                9 -> showPolicy("Terms of use", "Use Strawhat lawfully and respect each website's terms, copyright and access rules. You are responsible for the websites and content you choose to visit. Redirect protection prevents pop-up windows and links that try to open new tabs; it does not block advertisements or guarantee protection from every redirect. The app is provided as-is. Do not use it to bypass access controls or infringe anyone's rights.")
             }
         }.create()
         dialog.show(); styleDialog(dialog)
