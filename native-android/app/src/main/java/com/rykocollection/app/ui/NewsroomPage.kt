@@ -93,25 +93,32 @@ fun NativeNewsroomPage() {
     var category by remember { mutableStateOf("All") }
     var search by remember { mutableStateOf("") }
     var visibleCount by remember { mutableIntStateOf(5) }
+    var requestInFlight by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     suspend fun refresh(force:Boolean) {
-        if(!force && NewsCache.stories.isNotEmpty() && System.currentTimeMillis()-NewsCache.loadedAt<300000L) { stories=NewsCache.stories; failed=NewsCache.failed; loading=false; return }
+        if(!force && NewsCache.stories.isNotEmpty() && System.currentTimeMillis()-NewsCache.loadedAt<300000L) {
+            stories=NewsCache.stories; failed=NewsCache.failed; loading=false; return
+        }
+        if(requestInFlight) return
+        requestInFlight=true
         if(force) refreshing=true else loading=true
         error=null
         try {
-            val result=fetchStories(); stories=result.first; failed=result.second
+            val result=fetchStories()
+            stories=result.first; failed=result.second
             NewsCache.stories=stories; NewsCache.failed=failed; NewsCache.loadedAt=System.currentTimeMillis()
-            loading=false; refreshing=false
-        } catch(t:Throwable) { error=t.message ?: "News feeds could not be reached."; loading=false; refreshing=false }
+        } catch(cancelled:kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch(t:Throwable) {
+            error=t.message ?: "News feeds could not be reached."
+        } finally {
+            requestInFlight=false
+            loading=false
+            refreshing=false
+        }
     }
     LaunchedEffect(Unit){refresh(false)}
     LaunchedEffect(category, search) { visibleCount = 5 }
-    LaunchedEffect(listState, visibleCount) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-            .collect { lastVisible ->
-                if (visibleCount < stories.size && lastVisible >= visibleCount + 2) visibleCount = (visibleCount + 5).coerceAtMost(stories.size)
-            }
-    }
     val categories=listOf("All","Anime","Manga","Releases","Industry","Events")
     val filtered=stories.filter { s ->
         val text=(s.title+" "+s.description+" "+s.source).lowercase()
@@ -124,6 +131,16 @@ fun NativeNewsroomPage() {
             else->s.category.equals("Anime",true)||Regex("anime").containsMatchIn(text)
         }
         match && (search.isBlank() || text.contains(search.trim(),true))
+    }
+    val headerCount = 4 + if (failed.isNotEmpty() && stories.isNotEmpty()) 1 else 0
+    LaunchedEffect(listState, visibleCount, filtered.size, headerCount) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .collect { lastVisible ->
+                val lastStoryIndex = lastVisible - headerCount
+                if (visibleCount < filtered.size && lastStoryIndex >= (visibleCount - 2).coerceAtLeast(0)) {
+                    visibleCount = (visibleCount + 5).coerceAtMost(filtered.size)
+                }
+            }
     }
     Column(Modifier.fillMaxSize().background(Color.Black)) {
         LazyColumn(state=listState,modifier=Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp, top=16.dp, end=16.dp, bottom=144.dp),verticalArrangement=Arrangement.spacedBy(13.dp)) {
@@ -145,7 +162,7 @@ fun NativeNewsroomPage() {
             item {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)){Text("Latest updates",color=Color.White,fontSize=19.sp,fontWeight=FontWeight.Bold);Text(if(loading)"Collecting headlines…" else filtered.size.toString()+" stories",color=NewsMuted,fontSize=11.sp)}
-                    Text(if(refreshing)"Refreshing…" else "Refresh",color=NewsAccent,modifier=Modifier.clickable{kotlinx.coroutines.MainScope().launch{refresh(true)}}.padding(8.dp),fontSize=12.sp)
+                    Text(if(refreshing)"Refreshing…" else "Refresh",color=NewsAccent,modifier=Modifier.clickable{scope.launch{refresh(true)}}.padding(8.dp),fontSize=12.sp)
                 }
             }
             if(failed.isNotEmpty() && stories.isNotEmpty()) item { Text("Some sources are unavailable: "+failed.joinToString()+". Showing available stories.",color=Color(0xFFFFD18A),fontSize=11.sp,modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0x22C98C35)).padding(12.dp)) }
