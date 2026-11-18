@@ -797,12 +797,12 @@ class StreamGurdActivity : Activity() {
     private fun shouldBlockTopLevelNavigation(destination: String, userInitiated: Boolean): Boolean {
         val target = canonicalHost(destination)
         val knownAdHost = blocked.any { target == canonicalHost(it) || target.endsWith(".${canonicalHost(it)}") }
-        if (!blocking) return false
-        if (knownAdHost) return true
+        if (blocking && knownAdHost) return true
         if (userInitiated) {
             trustedHost = target
             return false
         }
+        if (!blocking) return false
         return !isTrustedSiteHost(target)
     }
 
@@ -1036,6 +1036,9 @@ class StreamGurdActivity : Activity() {
     }
     override fun onDestroy() {
         mainHandler.removeCallbacks(catalogueRefresh)
+        menuBackdropRequest++
+        clearMenuBackdrop()
+        applyMenuBackdropBlur(false)
         stopMusic(updateStatus = false)
         musicEmbedView?.destroy()
         web.destroy()
