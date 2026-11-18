@@ -53,7 +53,6 @@ class StreamGurdActivity : Activity() {
     private lateinit var addressBar: LinearLayout
     private lateinit var actionRow: LinearLayout
     private lateinit var statusRow: LinearLayout
-    private lateinit var browserBottomBar: LinearLayout
 
     private var blocking = true
     private var host = ""
@@ -91,8 +90,8 @@ class StreamGurdActivity : Activity() {
     }
 
     private fun applyBrowserSystemBars() {
-        window.statusBarColor = Color.rgb(8, 8, 8)
-        window.navigationBarColor = Color.rgb(8, 8, 8)
+        window.statusBarColor = Color.rgb(16, 18, 20)
+        window.navigationBarColor = Color.rgb(16, 18, 20)
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
         } else {
@@ -132,22 +131,20 @@ class StreamGurdActivity : Activity() {
             if (bold) typeface = Typeface.DEFAULT_BOLD
         }
     private fun buildUi() {
-        val bg = Color.rgb(8, 8, 8)
-        val surface = Color.rgb(26, 26, 29)
-        val muted = Color.rgb(189, 189, 194)
-        val accent = Color.rgb(169, 155, 255)
+        val bg = Color.rgb(16, 18, 20)
+        val surface = Color.rgb(23, 33, 53)
+        val muted = Color.rgb(178, 183, 190)
+        val accent = Color.rgb(226, 229, 232)
 
         root = FrameLayout(this).apply { setBackgroundColor(bg) }
         contentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setPadding(dp(10), dp(5), dp(10), dp(4))
             setBackgroundColor(Color.TRANSPARENT)
-            clipChildren = false
-            clipToPadding = false
         }
         root.addView(contentLayout, FrameLayout.LayoutParams(-1, -1))
 
-        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(8), dp(5), dp(8), dp(5)); background = darkGlassShape(0xF01A1A1D.toInt(), 22) }
+        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), 0, dp(2), dp(3)) }
         val brandMark = ImageView(this).apply {
             setImageResource(R.drawable.strawhat_logo)
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -156,12 +153,12 @@ class StreamGurdActivity : Activity() {
                 cornerRadius = dp(11).toFloat()
             }
             clipToOutline = true
-            contentDescription = "Strawhat logo"
+            contentDescription = "StreamGurd logo"
         }
         headerBar.addView(brandMark, LinearLayout.LayoutParams(dp(38), dp(38)))
         val brandText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), 0, 0, 0) }
-        brandText.addView(text("Strawhat", 16f, Color.WHITE, true))
-        brandText.addView(text("RYKO BROWSER", 8f, muted, true))
+        brandText.addView(text("StreamGurd", 16f, Color.WHITE, true))
+        brandText.addView(text("AD & TRACKER FILTER BROWSER", 8f, muted, true))
         headerBar.addView(brandText)
         headerBar.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         lateinit var shield: TextView
@@ -172,27 +169,24 @@ class StreamGurdActivity : Activity() {
             web.reload()
         }
         shield.textSize = 9f
-        shield.background = darkGlassShape(0xBBA99BFF.toInt(), 18)
-        shield.setTextColor(Color.rgb(18, 16, 27))
-        headerBar.addView(shield, LinearLayout.LayoutParams(dp(100), dp(34)))
-        contentLayout.addView(headerBar, LinearLayout.LayoutParams(-1, dp(54)))
+        val eye = actionButton("◉ Hide controls") { toggleBrowserChrome() }.apply { textSize = 10f }
+        contentLayout.addView(headerBar, LinearLayout.LayoutParams(-1, dp(38)))
 
         addressBar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, dp(4), 0)
-            background = darkGlassShape(0xE61A1A1D.toInt(), 18)
-            elevation = dp(3).toFloat()
+            background = glassShape(0xB82A3B55.toInt(), 13)
         }
-        addressBar.addView(text("⌕", 20f, accent, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
+        addressBar.addView(text("⌕", 20f, accent, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(26), dp(40)))
         url = EditText(this).apply {
-            hint = "Search or enter website"; setHintTextColor(Color.rgb(145, 145, 155)); setTextColor(Color.WHITE)
-            textSize = 14f; setSingleLine(true); setPadding(dp(3), 0, dp(3), 0); setBackgroundColor(Color.TRANSPARENT)
+            hint = "Search or enter website"; setHintTextColor(Color.rgb(112, 128, 154)); setTextColor(Color.WHITE)
+            textSize = 12f; setSingleLine(true); setPadding(dp(3), 0, dp(3), 0); setBackgroundColor(Color.TRANSPARENT)
             imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
             setOnEditorActionListener { _, _, _ -> open(text.toString()); true }
         }
         addressBar.addView(url, LinearLayout.LayoutParams(0, dp(42), 1f))
-        addressBar.addView(actionButton("GO", true) { open(url.text.toString()) }, LinearLayout.LayoutParams(dp(48), dp(36)))
-        contentLayout.addView(addressBar, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
+        addressBar.addView(actionButton("GO", true) { open(url.text.toString()) }, LinearLayout.LayoutParams(dp(46), dp(34)))
+        // Address/search bar is hidden; use Add Website from the floating menu.
 
         actionRow = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -204,7 +198,7 @@ class StreamGurdActivity : Activity() {
                 textSize = 13f
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(16), 0, dp(12), 0)
-                background = darkGlassShape(0xF01A1A1D.toInt(), 18)
+                background = darkGlassShape(0x8A171A20.toInt(), 15)
             }, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(7) })
         }
         addFeature("♫  Music Player · YouTube Music", ::showMusicPlayer)
@@ -216,7 +210,7 @@ class StreamGurdActivity : Activity() {
             blocking = !blocking
             prefs.edit().putBoolean("blocking", blocking).apply()
             shield.text = if (blocking) "盾 Protected" else "盾 Paused"
-            (actionRow.getChildAt(5) as? TextView)?.text =
+            (actionRow.getChildAt(4) as? TextView)?.text =
                 if (blocking) "盾  Redirect Protection: On" else "盾  Redirect Protection: Off"
             web.reload()
         }
@@ -226,7 +220,7 @@ class StreamGurdActivity : Activity() {
             tag = "top-actions-panel"
             orientation = LinearLayout.VERTICAL
             setPadding(dp(7), dp(7), dp(7), dp(1))
-            background = darkGlassShape(0xF01A1A1D.toInt(), 22)
+            background = darkGlassShape(0xC0101218.toInt(), 22)
             elevation = dp(16).toFloat()
             visibility = View.GONE
         }
@@ -235,8 +229,7 @@ class StreamGurdActivity : Activity() {
             topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }.apply {
             textSize = 21f
-            background = darkGlassShape(0xF0A99BFF.toInt(), 28)
-            setTextColor(Color.rgb(18, 16, 27))
+            background = darkGlassShape(0xD014171D.toInt(), 28)
             elevation = dp(18).toFloat()
         }
         root.addView(topActions, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
@@ -247,26 +240,66 @@ class StreamGurdActivity : Activity() {
             leftMargin = prefs.getInt("menu_x", dp(12)).coerceAtLeast(0)
             topMargin = prefs.getInt("menu_y", dp(72)).coerceAtLeast(0)
         }
-        headerBar.addView(topActionsToggle, LinearLayout.LayoutParams(dp(40), dp(40)).apply { leftMargin = dp(5) })
+        root.addView(topActionsToggle, floatingParams)
+        var downRawX = 0f
+        var downRawY = 0f
+        var startLeft = 0
+        var startTop = 0
+        var dragged = false
+        topActionsToggle.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX; downRawY = event.rawY
+                    val lp = view.layoutParams as FrameLayout.LayoutParams
+                    startLeft = lp.leftMargin; startTop = lp.topMargin
+                    dragged = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - downRawX).toInt()
+                    val dy = (event.rawY - downRawY).toInt()
+                    if (kotlin.math.abs(dx) > dp(5) || kotlin.math.abs(dy) > dp(5)) dragged = true
+                    if (dragged) {
+                        val lp = view.layoutParams as FrameLayout.LayoutParams
+                        lp.gravity = Gravity.TOP or Gravity.START
+                        lp.leftMargin = (startLeft + dx).coerceIn(0, (root.width - view.width).coerceAtLeast(0))
+                        lp.topMargin = (startTop + dy).coerceIn(0, (root.height - view.height).coerceAtLeast(0))
+                        view.layoutParams = lp
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (dragged) {
+                        val lp = view.layoutParams as FrameLayout.LayoutParams
+                        prefs.edit().putInt("menu_x", lp.leftMargin).putInt("menu_y", lp.topMargin).apply()
+                    } else {
+                        view.performClick()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> true
+                else -> true
+            }
+        }
         topActionsToggle.setOnClickListener {
             topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
 
-        statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(10), dp(5), dp(10), dp(5)); background = darkGlassShape(0x991A1A1D.toInt(), 16) }
-        val statusDot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(169, 155, 255)) } }
+        statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), 0, dp(3), dp(2)) }
+        val statusDot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(104, 215, 163)) } }
         statusRow.addView(statusDot, LinearLayout.LayoutParams(dp(6), dp(6)))
         status = text("  READY · Protection active", 9f, muted)
         statusRow.addView(status)
-        contentLayout.addView(statusRow, LinearLayout.LayoutParams(-1, dp(30)).apply { topMargin = dp(7) })
+        contentLayout.addView(statusRow, LinearLayout.LayoutParams(-1, dp(17)))
 
         homePanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(31, 29, 42), Color.rgb(26, 26, 29), Color.rgb(10, 10, 12))).apply { cornerRadius = dp(28).toFloat(); setStroke(dp(1), 0x45FFFFFF) }
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(43, 46, 49), Color.rgb(25, 27, 29))).apply { cornerRadius = dp(24).toFloat(); setStroke(dp(1), Color.rgb(105, 109, 113)) }
         }
-        val heroIcon = ImageView(this).apply { setImageResource(R.drawable.strawhat_logo); scaleType = ImageView.ScaleType.CENTER_CROP; background = darkGlassShape(0xFF242428.toInt(), 20); clipToOutline = true; contentDescription = "Strawhat" }
+        val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 34f; gravity = Gravity.CENTER; setTextColor(accent); background = GradientDrawable().apply { setColor(Color.rgb(58, 61, 64)); cornerRadius = dp(20).toFloat() } }
         homePanel.addView(heroIcon, LinearLayout.LayoutParams(dp(62), dp(62)).apply { gravity = Gravity.CENTER; bottomMargin = dp(14) })
         homePanel.addView(text("Set sail across the web.", 21f, Color.WHITE, true).apply { gravity = Gravity.CENTER })
-        homePanel.addView(text("Your browser, your choice. Filter known ad and tracker domains and help stop unwanted redirects.", 12f, muted).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(dp(4), dp(9), dp(4), dp(16)) })
+        homePanel.addView(text("Your browser, your choice. StreamGurd filters known ad and tracker domains and helps stop unwanted redirects.", 12f, Color.rgb(164, 180, 207)).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(dp(4), dp(9), dp(4), dp(16)) })
         val featureRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         featureRow.addView(featureChip("◉ Tracker filter"), LinearLayout.LayoutParams(0, dp(34), 1f).apply { rightMargin = dp(4) })
         featureRow.addView(featureChip("↗ Redirect guard"), LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(4) })
@@ -275,18 +308,7 @@ class StreamGurdActivity : Activity() {
         entryActions.addView(actionButton("＋ ADD WEBSITE", true) { addLink() }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { rightMargin = dp(5) })
         entryActions.addView(actionButton("☷ SITE CATALOGUE", false) { showCatalogue() }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(5) })
         homePanel.addView(entryActions, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(18) })
-        contentLayout.addView(homePanel, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(12) })
-
-        browserBottomBar = LinearLayout(this).apply { gravity = Gravity.CENTER; orientation = LinearLayout.HORIZONTAL; setPadding(dp(6), dp(6), dp(6), dp(6)); background = darkGlassShape(0xF01A1A1D.toInt(), 22); visibility = View.GONE }
-        fun addBrowserAction(label: String, action: () -> Unit) {
-            browserBottomBar.addView(actionButton(label, false, action).apply { background = darkGlassShape(0xAA242428.toInt(), 16); textSize = 17f }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
-        }
-        addBrowserAction("‹") { if (web.canGoBack()) web.goBack() }
-        addBrowserAction("›") { if (web.canGoForward()) web.goForward() }
-        addBrowserAction("⌂") { showHome() }
-        addBrowserAction("↻") { web.reload() }
-        addBrowserAction("⋯") { menu() }
-        contentLayout.addView(browserBottomBar, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8); bottomMargin = dp(4) })
+        contentLayout.addView(homePanel, LinearLayout.LayoutParams(-1, 0, 1f))
 
         web = WebView(this)
         root.addView(web, 0, FrameLayout.LayoutParams(-1, -1))
@@ -297,10 +319,10 @@ class StreamGurdActivity : Activity() {
             text = "♫"
             textSize = 23f
             gravity = Gravity.CENTER
-            setTextColor(Color.rgb(18, 16, 27))
+            setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(169, 155, 255))
+                setColor(Color.rgb(210, 28, 42))
                 setStroke(dp(1), Color.argb(90, 255, 255, 255))
             }
             elevation = dp(20).toFloat()
@@ -377,9 +399,8 @@ class StreamGurdActivity : Activity() {
     private fun setBrowserChromeVisible(visible: Boolean) {
         chromeVisible = visible
         val v = if (visible) View.VISIBLE else View.GONE
-        headerBar.visibility = v
+        headerBar.visibility = if (visible && web.visibility != View.VISIBLE) View.VISIBLE else View.GONE
         addressBar.visibility = v; statusRow.visibility = v
-        browserBottomBar.visibility = if (visible && web.visibility == View.VISIBLE) View.VISIBLE else View.GONE
         // The expandable floating top-actions control is part of the root overlay.
         root.findViewWithTag<View>("top-actions-toggle")?.visibility = v
         root.findViewWithTag<View>("top-actions-panel")?.visibility =
@@ -476,7 +497,7 @@ class StreamGurdActivity : Activity() {
     private fun showCatalogue() {
         var category = "Anime"
         var entries = cachedCatalogue(category)
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(10), dp(16), dp(8)); setBackgroundColor(Color.rgb(8, 8, 8)) }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(8), dp(18), dp(4)) }
         val tabs = LinearLayout(this).apply { gravity = Gravity.CENTER }
         val animeTab = actionButton("Anime", true) {}
         val mangaTab = actionButton("Manga") {}
@@ -484,20 +505,12 @@ class StreamGurdActivity : Activity() {
         tabs.addView(mangaTab, LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(4) })
         val search = EditText(this).apply {
             hint = "Search sites"; setSingleLine(true); setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
-            background = darkGlassShape(0xFF1A1A1D.toInt(),16); setPadding(dp(14),0,dp(14),0); textSize = 14f
+            background = shape(Color.rgb(48, 51, 54),12); setPadding(dp(12),0,dp(12),0)
         }
         val info = text("",11f,Color.LTGRAY).apply { setPadding(dp(2),dp(8),dp(2),dp(8)) }
-        val list = ListView(this).apply { setBackgroundColor(Color.rgb(8, 8, 8)); divider = android.graphics.drawable.ColorDrawable(0x22FFFFFF); dividerHeight = dp(1); selector = darkGlassShape(0x33A99BFF, 12) }
+        val list = ListView(this)
         val filtered = entries.toMutableList()
-        val adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, filtered.map { it.name }.toMutableList()) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val row = super.getView(position, convertView, parent) as TextView
-                row.setTextColor(Color.rgb(247, 247, 251)); row.textSize = 14f
-                row.setPadding(dp(14), dp(8), dp(14), dp(8))
-                row.background = darkGlassShape(0xAA1A1A1D.toInt(), 12)
-                return row
-            }
-        }
+        val adapter = ArrayAdapter(this,android.R.layout.simple_list_item_1,filtered.map { it.name }.toMutableList())
         list.adapter = adapter
         box.addView(tabs,LinearLayout.LayoutParams(-1,dp(40)))
         box.addView(search,LinearLayout.LayoutParams(-1,dp(46)).apply { topMargin=dp(6) })
@@ -510,10 +523,10 @@ class StreamGurdActivity : Activity() {
             val matches=entries.filter { it.name.contains(q,true)||it.url.contains(q,true) }
             filtered.clear(); filtered.addAll(matches)
             adapter.clear(); adapter.addAll(matches.map { it.name })
-            animeTab.background=darkGlassShape(if(which=="Anime") 0xFFA99BFF.toInt() else 0xFF242428.toInt(),16)
-            mangaTab.background=darkGlassShape(if(which=="Manga") 0xFFA99BFF.toInt() else 0xFF242428.toInt(),16)
-            animeTab.setTextColor(if(which=="Anime") Color.rgb(18, 16, 27) else Color.rgb(247, 247, 251))
-            mangaTab.setTextColor(if(which=="Manga") Color.rgb(18, 16, 27) else Color.rgb(247, 247, 251))
+            animeTab.background=shape(if(which=="Anime") Color.rgb(225, 228, 230) else Color.rgb(43, 46, 49),14)
+            mangaTab.background=shape(if(which=="Manga") Color.rgb(225, 228, 230) else Color.rgb(43, 46, 49),14)
+            animeTab.setTextColor(if(which=="Anime") Color.rgb(25, 27, 29) else Color.rgb(235, 237, 239))
+            mangaTab.setTextColor(if(which=="Manga") Color.rgb(25, 27, 29) else Color.rgb(235, 237, 239))
             info.text=if(entries.isEmpty()) "$which sheet is empty or unavailable" else "${matches.size} of ${entries.size} $which sites"
         }
         animeTab.setOnClickListener { render("Anime") }
@@ -534,7 +547,8 @@ class StreamGurdActivity : Activity() {
             }
         }
         dialog.show()
-        styleDialog(dialog)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.rgb(205, 209, 212))
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.LTGRAY)
         render("Anime")
         if(cachedCatalogue("Anime").isEmpty() || cachedCatalogue("Manga").isEmpty()) refreshCatalogue(false)
     }
@@ -571,7 +585,7 @@ class StreamGurdActivity : Activity() {
         musicEmbedView = playerWeb
         val panel = FrameLayout(this).apply {
             background = GradientDrawable().apply {
-                setColor(Color.rgb(8, 8, 8))
+                setColor(Color.rgb(12, 13, 16))
                 cornerRadius = dp(22).toFloat()
                 setStroke(dp(1), Color.argb(65, 255, 255, 255))
             }
@@ -616,15 +630,14 @@ class StreamGurdActivity : Activity() {
     private fun youtubeApiKey(): String = prefs.getString("youtube_data_api_key","").orEmpty().trim()
 
     private fun configureYouTubeApiKey(info: TextView) {
-        val field=EditText(this).apply { hint="Paste YouTube Data API v3 key"; setText(youtubeApiKey()); setTextColor(Color.WHITE); setHintTextColor(Color.rgb(145,145,155)); background=darkGlassShape(0xFF1A1A1D.toInt(),14); setPadding(dp(12),dp(8),dp(12),dp(8)); setSingleLine(true); inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD }
-        val dialog = AlertDialog.Builder(this).setTitle("YouTube Data API key")
+        val field=EditText(this).apply { hint="Paste YouTube Data API v3 key"; setText(youtubeApiKey()); setTextColor(Color.WHITE); setHintTextColor(Color.GRAY); setSingleLine(true); inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD }
+        AlertDialog.Builder(this).setTitle("YouTube Data API key")
             .setMessage("Search uses Google's official YouTube Data API. Enable YouTube Data API v3 in your Google Cloud project. Your key is stored only on this device; restrict it to this app where possible.")
             .setView(field).setNegativeButton("Cancel",null).setPositiveButton("Save") { _,_ ->
                 val key=field.text.toString().trim()
                 if(key.isBlank()) { prefs.edit().remove("youtube_data_api_key").apply(); info.text="API key cleared" }
                 else { prefs.edit().putString("youtube_data_api_key",key).apply(); info.text="API key saved · Search YouTube" }
-            }.create()
-        dialog.show(); styleDialog(dialog)
+            }.show()
     }
 
     private fun searchYouTubeMusic(raw:String,tracks:MutableList<MusicTrack>,adapter:BaseAdapter,info:TextView) {
@@ -673,9 +686,9 @@ class StreamGurdActivity : Activity() {
         gravity = Gravity.CENTER
         textSize = 10f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(Color.rgb(220, 220, 228))
+        setTextColor(Color.rgb(215, 218, 221))
         background = GradientDrawable().apply {
-            setColor(Color.rgb(36, 36, 40))
+            setColor(Color.rgb(48, 51, 54))
             cornerRadius = dp(18).toFloat()
         }
     }
@@ -685,11 +698,11 @@ class StreamGurdActivity : Activity() {
         gravity = Gravity.CENTER
         textSize = 12f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(if (prominent) Color.rgb(18, 16, 27) else Color.rgb(247, 247, 251))
+        setTextColor(if (prominent) Color.rgb(25, 29, 34) else Color.rgb(242, 244, 246))
         background = GradientDrawable().apply {
-            setColor(if (prominent) Color.rgb(169, 155, 255) else 0x33242428)
-            cornerRadius = dp(16).toFloat()
-            setStroke(dp(1), if (prominent) 0x99A99BFF.toInt() else 0x45FFFFFF)
+            setColor(if (prominent) Color.rgb(226, 229, 232) else 0x52FFFFFF)
+            cornerRadius = dp(14).toFloat()
+            setStroke(dp(1), if (prominent) Color.rgb(245, 246, 247) else 0x88FFFFFF.toInt())
         }
         setOnClickListener { click() }
     }
@@ -805,18 +818,16 @@ class StreamGurdActivity : Activity() {
         setBrowserChromeVisible(true)
     }
     private fun addLink() {
-        val field = EditText(this).apply { hint = "https://example.com"; setTextColor(Color.WHITE); setHintTextColor(Color.rgb(145,145,155)); background = darkGlassShape(0xFF1A1A1D.toInt(),14); setPadding(dp(12),dp(8),dp(12),dp(8)); setSingleLine(true) }
-        val dialog = AlertDialog.Builder(this).setTitle("Add website link").setView(field)
-            .setNegativeButton("Cancel",null).setPositiveButton("Open") { _,_ -> open(field.text.toString()) }.create()
-        dialog.show(); styleDialog(dialog)
+        val field = EditText(this).apply { hint = "https://example.com"; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY); setSingleLine(true) }
+        AlertDialog.Builder(this).setTitle("Add website link").setView(field)
+            .setNegativeButton("Cancel",null).setPositiveButton("Open") { _,_ -> open(field.text.toString()) }.show()
     }
     private fun saved() = prefs.getString("saved","").orEmpty().split("\n").filter { it.isNotBlank() }.toMutableList()
     private fun showSaved() {
         val list = saved()
         if(list.isEmpty()) { toast("No saved websites"); return }
-        val dialog = AlertDialog.Builder(this).setTitle("Saved websites").setItems(list.toTypedArray()) { _,i -> open(list[i]) }
-            .setNeutralButton("Save current") { _,_ -> web.url?.let { val next = (listOf(it)+list).distinct(); prefs.edit().putString("saved",next.joinToString("\n")).apply(); toast("Saved") } }.create()
-        dialog.show(); styleDialog(dialog)
+        AlertDialog.Builder(this).setTitle("Saved websites").setItems(list.toTypedArray()) { _,i -> open(list[i]) }
+            .setNeutralButton("Save current") { _,_ -> web.url?.let { val next = (listOf(it)+list).distinct(); prefs.edit().putString("saved",next.joinToString("\n")).apply(); toast("Saved") } }.show()
     }
     private fun saveHistory(value: String) {
         val list = prefs.getString("history","").orEmpty().split("\n").filter { it.isNotBlank() }.toMutableList()
@@ -824,30 +835,29 @@ class StreamGurdActivity : Activity() {
         prefs.edit().putString("history",list.take(80).joinToString("\n")).apply()
     }
     private fun menu() {
-        val choices = arrayOf(if(blocking) "Pause redirect protection" else "Enable redirect protection","Refresh","Back","Forward","Save current website","History","Clear cookies and cache","About Strawhat","Privacy policy","Terms of use")
-        val dialog = AlertDialog.Builder(this).setTitle("Strawhat").setItems(choices) { _,i ->
+        val choices = arrayOf(if(blocking) "Pause redirect protection" else "Enable redirect protection","Refresh","Back","Forward","Save current website","History","Clear cookies and cache","About StreamGurd","Privacy policy","Terms of use")
+        AlertDialog.Builder(this).setTitle("StreamGurd").setItems(choices) { _,i ->
             when(i) {
                 0 -> { blocking = !blocking; prefs.edit().putBoolean("blocking",blocking).apply(); web.reload() }
                 1 -> web.reload()
                 2 -> if(web.canGoBack()) web.goBack()
                 3 -> if(web.canGoForward()) web.goForward()
                 4 -> web.url?.let { val list = (listOf(it)+saved()).distinct(); prefs.edit().putString("saved",list.joinToString("\n")).apply(); toast("Website saved") }
-                5 -> { val h = prefs.getString("history","").orEmpty().split("\n").filter { it.isNotBlank() }; if(h.isNotEmpty()) { val historyDialog = AlertDialog.Builder(this).setTitle("History").setItems(h.toTypedArray()) { _,n -> open(h[n]) }.create(); historyDialog.show(); styleDialog(historyDialog) } else toast("No history") }
+                5 -> { val h = prefs.getString("history","").orEmpty().split("\n").filter { it.isNotBlank() }; if(h.isNotEmpty()) AlertDialog.Builder(this).setTitle("History").setItems(h.toTypedArray()) { _,n -> open(h[n]) }.show() else toast("No history") }
                 6 -> { CookieManager.getInstance().removeAllCookies(null); web.clearCache(true); web.clearHistory(); toast("Browser data cleared") }
                 7 -> showAbout()
-                8 -> showPolicy("Privacy policy", "Strawhat stores bookmarks, browsing history, catalogue cache and your last opened page locally on this device. Website requests go directly to the sites you visit. The app does not operate an account system or sell personal data. Websites may use their own cookies and tracking technologies. Clearing browser data removes local cookies, cache and history.")
-                9 -> showPolicy("Terms of use", "Use Strawhat lawfully and respect each website's terms, copyright and access rules. You are responsible for the websites and content you choose to visit. Redirect protection prevents pop-up windows and links that try to open new tabs; it does not block advertisements or guarantee protection from every redirect. The app is provided as-is. Do not use it to bypass access controls or infringe anyone's rights.")
+                8 -> showPolicy("Privacy policy", "StreamGurd stores bookmarks, browsing history, catalogue cache and your last opened page locally on this device. Website requests go directly to the sites you visit. The app does not operate an account system or sell personal data. Websites may use their own cookies and tracking technologies. Clearing browser data removes local cookies, cache and history.")
+                9 -> showPolicy("Terms of use", "Use StreamGurd lawfully and respect each website's terms, copyright and access rules. You are responsible for the websites and content you choose to visit. Redirect protection prevents pop-up windows and links that try to open new tabs; it does not block advertisements or guarantee protection from every redirect. The app is provided as-is. Do not use it to bypass access controls or infringe anyone's rights.")
             }
-        }.create()
-        dialog.show(); styleDialog(dialog)
+        }.show()
     }
     // Dark translucent surfaces keep the feature drawer readable while retaining a glass-like finish.
     private fun darkGlassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(245, 30, 30, 36),
+            Color.argb(238, 30, 33, 40),
             color,
-            Color.argb(235, 8, 8, 10)
+            Color.argb(220, 7, 9, 13)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
@@ -857,37 +867,26 @@ class StreamGurdActivity : Activity() {
     private fun glassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(235, 38, 36, 52),
+            Color.argb(220, 111, 148, 194),
             color,
-            Color.argb(225, 12, 12, 16)
+            Color.argb(205, 18, 29, 48)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
         setStroke(dp(1), 0x99FFFFFF.toInt())
     }
 
-    private fun styleDialog(dialog: AlertDialog) {
-        dialog.window?.setBackgroundDrawable(darkGlassShape(0xF01A1A1D.toInt(), 24))
-        dialog.window?.setDimAmount(0.68f)
-        dialog.findViewById<TextView>(resources.getIdentifier("alertTitle", "id", "android"))?.apply { setTextColor(Color.rgb(247, 247, 251)); textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
-        dialog.findViewById<TextView>(android.R.id.message)?.apply { setTextColor(Color.rgb(189, 189, 194)); textSize = 14f }
-        dialog.listView?.apply { setBackgroundColor(Color.rgb(26, 26, 29)); divider = android.graphics.drawable.ColorDrawable(0x22FFFFFF); dividerHeight = dp(1) }
-        listOf(AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL).forEach { which -> dialog.getButton(which)?.setTextColor(Color.rgb(169, 155, 255)) }
-    }
-
     private fun showAbout() {
-        val dialog = AlertDialog.Builder(this).setTitle("🏴‍☠️ Strawhat")
+        AlertDialog.Builder(this).setTitle("🏴‍☠️ StreamGurd")
             .setMessage("A local-first Android browser for exploring the web with a built-in site catalogue, saved links, browsing history and a lightweight domain filter.\n\nMade for personal browsing. Anime and Manga catalogues are supplied by the linked public spreadsheet.\n\nAd filtering is domain-based and cannot guarantee removal of first-party or in-stream ads.")
             .setPositiveButton("Privacy policy") { _, _ -> showPolicy("Privacy policy", "Bookmarks, history, catalogue cache and the last page are stored locally on this device. Website requests are sent to the websites you open. The app has no account system and does not sell personal data. Sites may set their own cookies. Clear browser data from the menu to remove local cookies, cache and history.") }
             .setNeutralButton("Terms") { _, _ -> showPolicy("Terms of use", "Use this browser lawfully. Respect website terms, copyright and access restrictions. You are responsible for your browsing and the content you access. Filtering is best-effort only and does not guarantee privacy, security, complete ad removal or uninterrupted access. The app is provided as-is.") }
-            .setNegativeButton("Close", null).create()
-        dialog.show(); styleDialog(dialog)
+            .setNegativeButton("Close", null).show()
     }
 
     private fun showPolicy(title: String, message: String) {
-        val dialog = AlertDialog.Builder(this).setTitle(title).setMessage(message)
-            .setPositiveButton("Got it", null).create()
-        dialog.show(); styleDialog(dialog)
+        AlertDialog.Builder(this).setTitle(title).setMessage(message)
+            .setPositiveButton("Got it", null).show()
     }
 
     private fun exitFullscreen() {
