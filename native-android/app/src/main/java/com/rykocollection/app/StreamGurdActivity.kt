@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.Rect
+import android.view.PixelCopy
 import android.graphics.Typeface
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -35,6 +38,9 @@ class StreamGurdActivity : Activity() {
     private var musicEmbedView: WebView? = null
     private var musicPanel: FrameLayout? = null
     private var musicFab: TextView? = null
+    private var menuBackdropView: ImageView? = null
+    private var menuBackdropBitmap: Bitmap? = null
+    private var menuBackdropRequest = 0
     private val mainHandler = Handler(Looper.getMainLooper())
     private val catalogueRefresh = object : Runnable {
         override fun run() {
@@ -147,7 +153,7 @@ class StreamGurdActivity : Activity() {
         }
         root.addView(contentLayout, FrameLayout.LayoutParams(-1, -1))
 
-        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(5), dp(9), dp(5)); background = darkGlassShape(0xE6222432.toInt(), 20); elevation = dp(3).toFloat() }
+        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(5), dp(9), dp(5)); background = darkGlassShape(0xB41D1F22.toInt(), 20); elevation = dp(3).toFloat() }
         val brandMark = ImageView(this).apply {
             setImageResource(R.drawable.strawhat_logo)
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -177,7 +183,7 @@ class StreamGurdActivity : Activity() {
 
         addressBar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, dp(4), 0)
-            background = glassShape(0xD52A2D43.toInt(), 17)
+            background = glassShape(0x9A242629.toInt(), 17)
             elevation = dp(3).toFloat()
         }
         addressBar.addView(text("⌕", 21f, accent, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
@@ -224,26 +230,30 @@ class StreamGurdActivity : Activity() {
             tag = "top-actions-panel"
             orientation = LinearLayout.VERTICAL
             setPadding(dp(7), dp(7), dp(7), dp(1))
-            background = darkGlassShape(0xA91A1B1E.toInt(), 22)
+            background = darkGlassShape(0x8A1A1B1E.toInt(), 22)
             elevation = dp(16).toFloat()
             visibility = View.GONE
         }
         topActions.addView(actionRow, LinearLayout.LayoutParams(dp(246), -2))
-        fun toggleTopActions() {
-            val show = topActions.visibility != View.VISIBLE
-            topActions.visibility = if (show) View.VISIBLE else View.GONE
-            applyMenuBackdropBlur(show)
-        }
-        val topActionsToggle = actionButton("☰") {
-            toggleTopActions()
-        }.apply {
+        val topActionsToggle = actionButton("☰") { }.apply {
             textSize = 21f
-            background = darkGlassShape(0xD01A1B1E.toInt(), 28)
+            background = darkGlassShape(0xA01A1B1E.toInt(), 28)
             elevation = dp(18).toFloat()
         }
         root.addView(topActions, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
             topMargin = dp(66); rightMargin = dp(12)
         })
+        fun toggleTopActions() {
+            val show = topActions.visibility != View.VISIBLE
+            topActions.visibility = if (show) View.VISIBLE else View.GONE
+            if (show) captureMenuBackdrop(topActions, topActionsToggle)
+            else {
+                menuBackdropRequest++
+                clearMenuBackdrop()
+                applyMenuBackdropBlur(false)
+            }
+        }
+        topActionsToggle.setOnClickListener { toggleTopActions() }
         topActionsToggle.tag = "top-actions-toggle"
         val floatingParams = FrameLayout.LayoutParams(dp(46), dp(46), Gravity.TOP or Gravity.START).apply {
             leftMargin = prefs.getInt("menu_x", dp(12)).coerceAtLeast(0)
@@ -303,9 +313,9 @@ class StreamGurdActivity : Activity() {
 
         homePanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = darkGlassShape(0xD91B1C20.toInt(), 26).apply { setStroke(dp(1), 0x55FFFFFF) }
+            background = darkGlassShape(0x9B1B1D20.toInt(), 26).apply { setStroke(dp(1), 0x55FFFFFF) }
         }
-        val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 36f; gravity = Gravity.CENTER; setTextColor(accent); background = darkGlassShape(0xD52D2B43.toInt(), 20) }
+        val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 36f; gravity = Gravity.CENTER; setTextColor(accent); background = darkGlassShape(0x9B2A2D31.toInt(), 20) }
         homePanel.addView(heroIcon, LinearLayout.LayoutParams(dp(62), dp(62)).apply { gravity = Gravity.CENTER; bottomMargin = dp(14) })
         homePanel.addView(text("Set sail across the web.", 21f, Color.WHITE, true).apply { gravity = Gravity.CENTER })
         homePanel.addView(text("Your browser, your choice. StreamGurd filters known ad and tracker domains and helps stop unwanted redirects.", 12f, muted).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(dp(4), dp(9), dp(4), dp(16)) })
@@ -588,13 +598,33 @@ class StreamGurdActivity : Activity() {
             }
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-            webChromeClient = WebChromeClient()
-            webViewClient = WebViewClient()
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                    android.util.Log.d("StrawhatMusic", message.message())
+                    return true
+                }
+            }
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, page: String?) {
+                    if (musicPanel === panel) musicFab?.visibility = View.GONE
+                }
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    if (request?.isForMainFrame == true) runOnUiThread {
+                        if (musicPanel === panel) failMusicPlayer("Music player page failed to load")
+                    }
+                }
+                override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, response: WebResourceResponse?) {
+                    if (request?.isForMainFrame == true && (response?.statusCode ?: 200) >= 400) runOnUiThread {
+                        if (musicPanel === panel) failMusicPlayer("Music player returned HTTP ${response?.statusCode}")
+                    }
+                }
+            }
         }
         musicEmbedView = playerWeb
         val panel = FrameLayout(this).apply {
             background = GradientDrawable().apply {
-                setColor(Color.rgb(12, 13, 16))
+                setColor(Color.argb(210, 22, 24, 27))
                 cornerRadius = dp(22).toFloat()
                 setStroke(dp(1), Color.argb(65, 255, 255, 255))
             }
@@ -631,8 +661,7 @@ class StreamGurdActivity : Activity() {
             val html = assets.open("music_player.html").bufferedReader(Charsets.UTF_8).use { it.readText() }
             playerWeb.loadDataWithBaseURL("https://appassets.androidplatform.net/", html, "text/html", "UTF-8", null)
         } catch (e: Exception) {
-            panel.visibility = View.GONE
-            toast("Music player could not be loaded: ${e.message ?: "asset missing"}")
+            failMusicPlayer("Music player could not be loaded: ${e.message ?: "asset missing"}")
         }
     }
 
@@ -691,17 +720,90 @@ class StreamGurdActivity : Activity() {
     }
 
     /**
-     * Mirrors RykoCollection's source-backed Haze glass: blur the live page beneath
-     * the floating drawer while keeping the drawer itself crisp and interactive.
-     * RenderEffect is the native View equivalent for this legacy View-based screen.
+     * Captures only the page beneath the drawer, then blurs that snapshot.
+     * The drawer and its controls are deliberately excluded and remain crisp.
      */
+    private fun captureMenuBackdrop(menu: View, toggle: View) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || root.width <= 0 || root.height <= 0) {
+            applyMenuBackdropBlur(true)
+            return
+        }
+        clearMenuBackdrop()
+        val request = ++menuBackdropRequest
+        val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        val location = IntArray(2)
+        root.getLocationInWindow(location)
+        val source = Rect(location[0], location[1], location[0] + root.width, location[1] + root.height)
+        menu.alpha = 0f
+        toggle.alpha = 0f
+        PixelCopy.request(window, source, bitmap, { result ->
+            menu.alpha = 1f
+            toggle.alpha = 1f
+            if (request != menuBackdropRequest || menu.visibility != View.VISIBLE) {
+                bitmap.recycle()
+                return@request
+            }
+            if (result == PixelCopy.SUCCESS) {
+                val backdrop = ImageView(this).apply {
+                    setImageBitmap(bitmap)
+                    scaleType = ImageView.ScaleType.FIT_XY
+                    alpha = 0.88f
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setRenderEffect(RenderEffect.createBlurEffect(dp(28).toFloat(), dp(28).toFloat(), Shader.TileMode.CLAMP))
+                    }
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+                val insertAt = root.indexOfChild(menu).coerceAtLeast(0)
+                root.addView(backdrop, insertAt, FrameLayout.LayoutParams(-1, -1))
+                menuBackdropView = backdrop
+                menuBackdropBitmap = bitmap
+                applyMenuBackdropBlur(false)
+            } else {
+                bitmap.recycle()
+                applyMenuBackdropBlur(true)
+            }
+        }, mainHandler)
+    }
+
+    private fun clearMenuBackdrop() {
+        menuBackdropView?.let { root.removeView(it) }
+        menuBackdropView = null
+        menuBackdropBitmap?.let { if (!it.isRecycled) it.recycle() }
+        menuBackdropBitmap = null
+    }
+
     private fun applyMenuBackdropBlur(enabled: Boolean) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        val effect = if (enabled) {
-            RenderEffect.createBlurEffect(dp(24).toFloat(), dp(24).toFloat(), Shader.TileMode.CLAMP)
-        } else null
+        val effect = if (enabled) RenderEffect.createBlurEffect(dp(24).toFloat(), dp(24).toFloat(), Shader.TileMode.CLAMP) else null
         contentLayout.setRenderEffect(effect)
         if (::web.isInitialized) web.setRenderEffect(effect)
+    }
+
+    private fun failMusicPlayer(message: String) {
+        val panel = musicPanel
+        musicPanel = null
+        musicEmbedView?.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            destroy()
+        }
+        musicEmbedView = null
+        panel?.let { root.removeView(it) }
+        musicFab?.visibility = View.VISIBLE
+        musicFab?.text = "♫"
+        toast(message)
+    }
+
+    private fun shouldBlockTopLevelNavigation(destination: String, userInitiated: Boolean): Boolean {
+        val target = canonicalHost(destination)
+        val knownAdHost = blocked.any { target == canonicalHost(it) || target.endsWith(".${canonicalHost(it)}") }
+        if (!blocking) return false
+        if (knownAdHost) return true
+        if (userInitiated) {
+            trustedHost = target
+            return false
+        }
+        return !isTrustedSiteHost(target)
     }
 
     private fun featureChip(label: String) = TextView(this).apply {
@@ -767,8 +869,9 @@ class StreamGurdActivity : Activity() {
                 // and other subframe resources remain available unless their host is blocked.
                 if (request.isForMainFrame) {
                     val destination = uri.host?.lowercase(Locale.ROOT) ?: return true
-                    val isKnownAdHost = blocked.any { destination == it || destination.endsWith(".$it") }
-                    if (isKnownAdHost || !isTrustedSiteHost(destination)) {
+                    val recentTouch = lastUserTouchAt > 0L && SystemClock.elapsedRealtime() - lastUserTouchAt < 3500L
+                    val userInitiated = request.hasGesture() || recentTouch
+                    if (shouldBlockTopLevelNavigation(destination, userInitiated)) {
                         status.text = "BLOCKED REDIRECT · $destination"
                         return true
                     }
@@ -782,8 +885,8 @@ class StreamGurdActivity : Activity() {
                 val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return true
                 if (scheme !in listOf("http", "https")) return true
                 val destination = uri.host?.lowercase(Locale.ROOT) ?: return true
-                val isKnownAdHost = blocked.any { destination == it || destination.endsWith(".$it") }
-                if (isKnownAdHost || !isTrustedSiteHost(destination)) {
+                val recentTouch = lastUserTouchAt > 0L && SystemClock.elapsedRealtime() - lastUserTouchAt < 3500L
+                if (shouldBlockTopLevelNavigation(destination, recentTouch)) {
                     status.text = "BLOCKED REDIRECT · $destination"
                     return true
                 }
@@ -874,9 +977,9 @@ class StreamGurdActivity : Activity() {
     private fun darkGlassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(238, 38, 40, 44),
+            Color.argb(148, 48, 50, 54),
             color,
-            Color.argb(232, 10, 11, 18)
+            Color.argb(158, 12, 13, 16)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
@@ -886,9 +989,9 @@ class StreamGurdActivity : Activity() {
     private fun glassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(230, 54, 56, 60),
+            Color.argb(150, 66, 68, 72),
             color,
-            Color.argb(220, 16, 17, 29)
+            Color.argb(154, 16, 17, 20)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
