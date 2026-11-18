@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -35,7 +37,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
 
 private const val NEWS_API = "https://ryko-84zbxiwqx-z-hub.vercel.app"
 private val NewsAccent = Color(0xFFA99BFF)
@@ -72,20 +73,12 @@ private suspend fun fetchStories():Pair<List<NewsStory>,List<String>> = withCont
     }.getOrNull() }.distinctBy{it.link}.sortedByDescending{it.time}.take(100)
     list to root["failedSources"]?.jsonArray.orEmpty().mapNotNull{runCatching{it.jsonPrimitive.content}.getOrNull()}
 }
-private suspend fun resolveNewsImages(initial:List<NewsStory>,update:(String,String)->Unit)=withContext(Dispatchers.IO) {
-    val queue=initial.filter{it.image==null}.take(48); val next=AtomicInteger(0)
-    kotlinx.coroutines.coroutineScope {
-        List(4) { launch(Dispatchers.IO) {
-            while(true) {
-                val index=next.getAndIncrement(); if(index>=queue.size) break
-                val story=queue[index]
-                runCatching {
-                    val url=NEWS_API+"/api/news-image?url="+URLEncoder.encode(story.link,Charsets.UTF_8.name())
-                    Json.parseToJsonElement(httpText(url)).jsonObject.field("image").takeIf{it.startsWith("http")}
-                }.getOrNull()?.let{ image -> withContext(Dispatchers.Main) { update(story.link,image) } }
-            }
-        } }.forEach{it.join()}
-    }
+private suspend fun fetchNewsImage(story:NewsStory):String? = withContext(Dispatchers.IO) {
+    if(story.image!=null) return@withContext story.image
+    runCatching {
+        val url=NEWS_API+"/api/news-image?url="+URLEncoder.encode(story.link,Charsets.UTF_8.name())
+        Json.parseToJsonElement(httpText(url)).jsonObject.field("image").takeIf{it.startsWith("http")}
+    }.getOrNull()
 }
 
 @Composable
@@ -99,6 +92,8 @@ fun NativeNewsroomPage() {
     var error by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("All") }
     var search by remember { mutableStateOf("") }
+    var visibleCount by remember { mutableIntStateOf(5) }
+    val listState = rememberLazyListState()
     suspend fun refresh(force:Boolean) {
         if(!force && NewsCache.stories.isNotEmpty() && System.currentTimeMillis()-NewsCache.loadedAt<300000L) { stories=NewsCache.stories; failed=NewsCache.failed; loading=false; return }
         if(force) refreshing=true else loading=true
@@ -107,13 +102,16 @@ fun NativeNewsroomPage() {
             val result=fetchStories(); stories=result.first; failed=result.second
             NewsCache.stories=stories; NewsCache.failed=failed; NewsCache.loadedAt=System.currentTimeMillis()
             loading=false; refreshing=false
-            resolveNewsImages(result.first) { link,image ->
-                stories=stories.map{if(it.link==link)it.copy(image=image)else it}
-                NewsCache.stories=NewsCache.stories.map{if(it.link==link)it.copy(image=image)else it}
-            }
         } catch(t:Throwable) { error=t.message ?: "News feeds could not be reached."; loading=false; refreshing=false }
     }
     LaunchedEffect(Unit){refresh(false)}
+    LaunchedEffect(category, search) { visibleCount = 5 }
+    LaunchedEffect(listState, visibleCount) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .collect { lastVisible ->
+                if (visibleCount < stories.size && lastVisible >= visibleCount + 2) visibleCount = (visibleCount + 5).coerceAtMost(stories.size)
+            }
+    }
     val categories=listOf("All","Anime","Manga","Releases","Industry","Events")
     val filtered=stories.filter { s ->
         val text=(s.title+" "+s.description+" "+s.source).lowercase()
@@ -128,7 +126,7 @@ fun NativeNewsroomPage() {
         match && (search.isBlank() || text.contains(search.trim(),true))
     }
     Column(Modifier.fillMaxSize().background(Color.Black)) {
-        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp, top=16.dp, end=16.dp, bottom=144.dp),verticalArrangement=Arrangement.spacedBy(13.dp)) {
+        LazyColumn(state=listState,modifier=Modifier.fillMaxSize(),contentPadding=PaddingValues(start=16.dp, top=16.dp, end=16.dp, bottom=144.dp),verticalArrangement=Arrangement.spacedBy(13.dp)) {
             item {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Icon(Icons.Default.Newspaper,null,tint=NewsAccent,modifier=Modifier.size(30.dp))
@@ -165,19 +163,22 @@ fun NativeNewsroomPage() {
                     Text("Try another category or refresh.",color=NewsMuted,fontSize=12.sp)
                     Text("Try again",color=NewsAccent,modifier=Modifier.clickable{kotlinx.coroutines.MainScope().launch{refresh(true)}}.padding(10.dp))
                 }
-            } else items(filtered,key={it.link}) { story ->
+            } else items(filtered.take(visibleCount),key={it.link}) { story ->
                 NewsCard(story){runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(story.link)))}}
             }
-            item{Text("Stories open at their original publishers. Images come from RSS media or article metadata.",color=NewsMuted,fontSize=10.sp)}
+            if(visibleCount < filtered.size) item { Text("Loading more stories…",color=NewsMuted,fontSize=11.sp,modifier=Modifier.fillMaxWidth().padding(12.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center) }
+            item{Text("Stories open at their original publishers. Images load as cards appear.",color=NewsMuted,fontSize=10.sp)}
         }
     }
 }
 @Composable
 private fun NewsCard(story:NewsStory,onOpen:()->Unit) {
+    var resolvedImage by remember(story.link, story.image) { mutableStateOf(story.image) }
+    LaunchedEffect(story.link, story.image) { if (resolvedImage == null) resolvedImage = fetchNewsImage(story) }
     Card(Modifier.fillMaxWidth().rykoGlass(18.dp).clickable(onClick=onOpen),shape=RoundedCornerShape(18.dp),colors=CardDefaults.cardColors(containerColor=Color.Transparent)){
         Column{
             Box(Modifier.fillMaxWidth().height(190.dp).background(Color(0xFF202027)),contentAlignment=Alignment.Center){
-                if(story.image!=null) AsyncImage(story.image,story.title,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+                if(resolvedImage!=null) AsyncImage(resolvedImage,story.title,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
                 else Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.BrokenImage,null,tint=NewsMuted,modifier=Modifier.size(28.dp));Text("Image unavailable",color=NewsMuted,fontSize=11.sp)}
             }
             Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
