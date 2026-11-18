@@ -869,7 +869,7 @@ class StreamGurdActivity : Activity() {
     private fun styleDialog(dialog: AlertDialog) {
         dialog.window?.setBackgroundDrawable(darkGlassShape(0xF01A1A1D.toInt(), 24))
         dialog.window?.setDimAmount(0.68f)
-        dialog.findViewById<TextView>(android.R.id.alertTitle)?.apply { setTextColor(Color.rgb(247, 247, 251)); textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
+        dialog.findViewById<TextView>(resources.getIdentifier("alertTitle", "id", "android"))?.apply { setTextColor(Color.rgb(247, 247, 251)); textSize = 18f; typeface = Typeface.DEFAULT_BOLD }
         dialog.findViewById<TextView>(android.R.id.message)?.apply { setTextColor(Color.rgb(189, 189, 194)); textSize = 14f }
         dialog.listView?.apply { setBackgroundColor(Color.rgb(26, 26, 29)); divider = android.graphics.drawable.ColorDrawable(0x22FFFFFF); dividerHeight = dp(1) }
         listOf(AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL).forEach { which -> dialog.getButton(which)?.setTextColor(Color.rgb(169, 155, 255)) }
