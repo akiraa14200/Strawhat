@@ -102,8 +102,8 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.rememberHazeState
 
-private enum class MainTab(val label: String) { HOME("Home"), BROWSE("Browse"), VIDEO("Video"), LIBRARY("Library"), ACCOUNT("Account"), PROTECT("Protect") }
-private enum class ExtraPage(val label: String) { TRENDING("Ryko Top Trending"), NEWS("Newsroom"), SETTINGS("Settings") }
+private enum class MainTab(val label: String) { HOME("Home"), BROWSE("Browse"), STRAWHAT("Strawhat"), NEWS("News"), VIDEO("Video"), LIBRARY("Library"), ACCOUNT("Account") }
+private enum class ExtraPage(val label: String) { TRENDING("Ryko Top Trending"), SETTINGS("Settings") }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,6 +165,11 @@ fun RykoApp() {
                     Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeLibraryPage(refreshToken = libraryRefreshToken) }
                 }
             }
+            if (visitedTabs.contains(MainTab.NEWS)) {
+                Box(Modifier.fillMaxSize().hazeSource(hazeState).graphicsLayer { alpha = if (tab == MainTab.NEWS && selectedEntry == null && extraPage == null) 1f else 0f }.zIndex(if (tab == MainTab.NEWS && selectedEntry == null && extraPage == null) 1f else -1f).then(if (tab == MainTab.NEWS && selectedEntry == null && extraPage == null) Modifier else Modifier.offset(x = 10000.dp))) {
+                    Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeNewsroomPage() }
+                }
+            }
             if (visitedTabs.contains(MainTab.ACCOUNT)) {
                 Box(Modifier.fillMaxSize().hazeSource(hazeState).graphicsLayer { alpha = if (tab == MainTab.ACCOUNT && selectedEntry == null && extraPage == null) 1f else 0f }.zIndex(if (tab == MainTab.ACCOUNT && selectedEntry == null && extraPage == null) 1f else -1f).then(if (tab == MainTab.ACCOUNT && selectedEntry == null && extraPage == null) Modifier else Modifier.offset(x = 10000.dp))) {
                     Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeAccountPage() }
@@ -174,7 +179,6 @@ fun RykoApp() {
             if (selectedEntry != null) Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); EntryDetails(selectedEntry!!, mangaMode) { selectedEntry = null; tab = MainTab.ACCOUNT } } }
             else when (extraPage) {
                 ExtraPage.TRENDING -> Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeRankingPage() } }
-                ExtraPage.NEWS -> Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeNewsroomPage() } }
                 ExtraPage.SETTINGS -> Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativePlaceholder("Settings", "Appearance, language, notifications and app preferences.") } }
                 null -> Unit
             }
@@ -207,8 +211,9 @@ fun RykoApp() {
                             IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.Menu, contentDescription = "Ryko menu", tint = Color.White) }
                             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, modifier = Modifier.rykoGlass(22.dp, Color(0xDD17171B), 0.46f, 30.dp), shape = RoundedCornerShape(22.dp), containerColor = Color.Transparent, tonalElevation = 0.dp, shadowElevation = 0.dp) {
                                 DropdownMenuItem(text = { Text(if (mangaMode) "Switch to Anime" else "Switch to Manga") }, onClick = { mangaMode = !mangaMode; menuOpen = false; selectedEntry = null })
+                                DropdownMenuItem(text = { Text("Browse") }, onClick = { tab = MainTab.BROWSE; if (!visitedTabs.contains(MainTab.BROWSE)) visitedTabs.add(MainTab.BROWSE); extraPage = null; selectedEntry = null; menuOpen = false })
+                                DropdownMenuItem(text = { Text("Library") }, onClick = { tab = MainTab.LIBRARY; if (!visitedTabs.contains(MainTab.LIBRARY)) visitedTabs.add(MainTab.LIBRARY); libraryRefreshToken++; extraPage = null; selectedEntry = null; menuOpen = false })
                                 DropdownMenuItem(text = { Text("Ryko Top Trending") }, onClick = { extraPage = ExtraPage.TRENDING; selectedEntry = null; menuOpen = false })
-                                DropdownMenuItem(text = { Text("Newsroom") }, onClick = { extraPage = ExtraPage.NEWS; selectedEntry = null; menuOpen = false })
                                 DropdownMenuItem(text = { Text("Settings") }, onClick = { extraPage = ExtraPage.SETTINGS; selectedEntry = null; menuOpen = false })
                             }
                         }
@@ -226,7 +231,7 @@ fun RykoApp() {
                     selectedTab = tab,
                     visible = selectedEntry == null && extraPage == null,
                     onSelect = { item ->
-                        if (item == MainTab.PROTECT) {
+                        if (item == MainTab.STRAWHAT) {
                             context.startActivity(Intent(context, StreamGurdActivity::class.java))
                         } else {
                             tab = item
@@ -274,14 +279,15 @@ private fun RykoBottomNavigation(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MainTab.entries.forEach { item ->
+        listOf(MainTab.HOME, MainTab.STRAWHAT, MainTab.NEWS, MainTab.VIDEO, MainTab.ACCOUNT).forEach { item ->
             val icon = when (item) {
                 MainTab.HOME -> Icons.Default.Home
-                MainTab.BROWSE -> Icons.Default.Explore
+                MainTab.STRAWHAT -> Icons.Default.Shield
+                MainTab.NEWS -> Icons.Default.Explore
                 MainTab.VIDEO -> Icons.Default.PlayCircle
-                MainTab.LIBRARY -> Icons.Default.BookmarkBorder
                 MainTab.ACCOUNT -> Icons.Default.Person
-                MainTab.PROTECT -> Icons.Default.Shield
+                MainTab.BROWSE -> Icons.Default.Explore
+                MainTab.LIBRARY -> Icons.Default.BookmarkBorder
             }
             val selected = selectedTab == item
             Column(
