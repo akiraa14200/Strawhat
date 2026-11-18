@@ -131,20 +131,20 @@ class StreamGurdActivity : Activity() {
             if (bold) typeface = Typeface.DEFAULT_BOLD
         }
     private fun buildUi() {
-        val bg = Color.rgb(16, 18, 20)
-        val surface = Color.rgb(23, 33, 53)
-        val muted = Color.rgb(178, 183, 190)
-        val accent = Color.rgb(226, 229, 232)
+        val bg = Color.rgb(10, 11, 16)
+        val surface = Color.rgb(27, 29, 42)
+        val muted = Color.rgb(176, 181, 199)
+        val accent = Color.rgb(177, 160, 255)
 
         root = FrameLayout(this).apply { setBackgroundColor(bg) }
         contentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), dp(5), dp(10), dp(4))
+            setPadding(dp(13), dp(8), dp(13), dp(8))
             setBackgroundColor(Color.TRANSPARENT)
         }
         root.addView(contentLayout, FrameLayout.LayoutParams(-1, -1))
 
-        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), 0, dp(2), dp(3)) }
+        headerBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(5), dp(9), dp(5)); background = darkGlassShape(0xE6222432.toInt(), 20); elevation = dp(3).toFloat() }
         val brandMark = ImageView(this).apply {
             setImageResource(R.drawable.strawhat_logo)
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -170,16 +170,17 @@ class StreamGurdActivity : Activity() {
         }
         shield.textSize = 9f
         val eye = actionButton("◉ Hide controls") { toggleBrowserChrome() }.apply { textSize = 10f }
-        contentLayout.addView(headerBar, LinearLayout.LayoutParams(-1, dp(38)))
+        contentLayout.addView(headerBar, LinearLayout.LayoutParams(-1, dp(52)))
 
         addressBar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), 0, dp(4), 0)
-            background = glassShape(0xB82A3B55.toInt(), 13)
+            background = glassShape(0xD52A2D43.toInt(), 17)
+            elevation = dp(3).toFloat()
         }
-        addressBar.addView(text("⌕", 20f, accent, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(26), dp(40)))
+        addressBar.addView(text("⌕", 21f, accent, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(30), dp(44)))
         url = EditText(this).apply {
             hint = "Search or enter website"; setHintTextColor(Color.rgb(112, 128, 154)); setTextColor(Color.WHITE)
-            textSize = 12f; setSingleLine(true); setPadding(dp(3), 0, dp(3), 0); setBackgroundColor(Color.TRANSPARENT)
+            textSize = 14f; setSingleLine(true); setPadding(dp(5), 0, dp(5), 0); setBackgroundColor(Color.TRANSPARENT)
             imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
             setOnEditorActionListener { _, _, _ -> open(text.toString()); true }
@@ -285,21 +286,21 @@ class StreamGurdActivity : Activity() {
             topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
 
-        statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(3), 0, dp(3), dp(2)) }
+        statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(4), dp(9), dp(4)); background = darkGlassShape(0xA6222432.toInt(), 14) }
         val statusDot = View(this).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(104, 215, 163)) } }
         statusRow.addView(statusDot, LinearLayout.LayoutParams(dp(6), dp(6)))
         status = text("  READY · Protection active", 9f, muted)
         statusRow.addView(status)
-        contentLayout.addView(statusRow, LinearLayout.LayoutParams(-1, dp(17)))
+        contentLayout.addView(statusRow, LinearLayout.LayoutParams(-1, dp(29)))
 
         homePanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(43, 46, 49), Color.rgb(25, 27, 29))).apply { cornerRadius = dp(24).toFloat(); setStroke(dp(1), Color.rgb(105, 109, 113)) }
+            background = darkGlassShape(0xD9232638.toInt(), 26).apply { setStroke(dp(1), 0x66C9BCFF) }
         }
-        val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 34f; gravity = Gravity.CENTER; setTextColor(accent); background = GradientDrawable().apply { setColor(Color.rgb(58, 61, 64)); cornerRadius = dp(20).toFloat() } }
+        val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 36f; gravity = Gravity.CENTER; setTextColor(accent); background = darkGlassShape(0xD52D2B43.toInt(), 20) }
         homePanel.addView(heroIcon, LinearLayout.LayoutParams(dp(62), dp(62)).apply { gravity = Gravity.CENTER; bottomMargin = dp(14) })
         homePanel.addView(text("Set sail across the web.", 21f, Color.WHITE, true).apply { gravity = Gravity.CENTER })
-        homePanel.addView(text("Your browser, your choice. StreamGurd filters known ad and tracker domains and helps stop unwanted redirects.", 12f, Color.rgb(164, 180, 207)).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(dp(4), dp(9), dp(4), dp(16)) })
+        homePanel.addView(text("Your browser, your choice. StreamGurd filters known ad and tracker domains and helps stop unwanted redirects.", 12f, muted).apply { gravity = Gravity.CENTER; setLineSpacing(dp(3).toFloat(), 1f); setPadding(dp(4), dp(9), dp(4), dp(16)) })
         val featureRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
         featureRow.addView(featureChip("◉ Tracker filter"), LinearLayout.LayoutParams(0, dp(34), 1f).apply { rightMargin = dp(4) })
         featureRow.addView(featureChip("↗ Redirect guard"), LinearLayout.LayoutParams(0, dp(34), 1f).apply { leftMargin = dp(4) })
@@ -308,7 +309,7 @@ class StreamGurdActivity : Activity() {
         entryActions.addView(actionButton("＋ ADD WEBSITE", true) { addLink() }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { rightMargin = dp(5) })
         entryActions.addView(actionButton("☷ SITE CATALOGUE", false) { showCatalogue() }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(5) })
         homePanel.addView(entryActions, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(18) })
-        contentLayout.addView(homePanel, LinearLayout.LayoutParams(-1, 0, 1f))
+        contentLayout.addView(homePanel, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(10) })
 
         web = WebView(this)
         root.addView(web, 0, FrameLayout.LayoutParams(-1, -1))
@@ -322,7 +323,7 @@ class StreamGurdActivity : Activity() {
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(210, 28, 42))
+                setColor(Color.rgb(151, 119, 255))
                 setStroke(dp(1), Color.argb(90, 255, 255, 255))
             }
             elevation = dp(20).toFloat()
@@ -686,11 +687,8 @@ class StreamGurdActivity : Activity() {
         gravity = Gravity.CENTER
         textSize = 10f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(Color.rgb(215, 218, 221))
-        background = GradientDrawable().apply {
-            setColor(Color.rgb(48, 51, 54))
-            cornerRadius = dp(18).toFloat()
-        }
+        setTextColor(Color.rgb(236, 232, 255))
+        background = darkGlassShape(0xC12D2B43.toInt(), 18)
     }
 
     private fun actionButton(label: String, prominent: Boolean = false, click: () -> Unit) = TextView(this).apply {
@@ -698,12 +696,11 @@ class StreamGurdActivity : Activity() {
         gravity = Gravity.CENTER
         textSize = 12f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(if (prominent) Color.rgb(25, 29, 34) else Color.rgb(242, 244, 246))
-        background = GradientDrawable().apply {
-            setColor(if (prominent) Color.rgb(226, 229, 232) else 0x52FFFFFF)
-            cornerRadius = dp(14).toFloat()
-            setStroke(dp(1), if (prominent) Color.rgb(245, 246, 247) else 0x88FFFFFF.toInt())
+        setTextColor(if (prominent) Color.rgb(24, 20, 42) else Color.rgb(247, 246, 255))
+        background = darkGlassShape(if (prominent) 0xE2B7A4FF.toInt() else 0xA52D2B43.toInt(), 16).apply {
+            setStroke(dp(1), if (prominent) 0xBBD8CCFF.toInt() else 0x55FFFFFF)
         }
+        elevation = dp(2).toFloat()
         setOnClickListener { click() }
     }
 
@@ -855,25 +852,25 @@ class StreamGurdActivity : Activity() {
     private fun darkGlassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(238, 30, 33, 40),
+            Color.argb(242, 42, 39, 62),
             color,
-            Color.argb(220, 7, 9, 13)
+            Color.argb(232, 10, 11, 18)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
-        setStroke(dp(1), 0x77FFFFFF)
+        setStroke(dp(1), 0x66D9D0FF)
     }
 
     private fun glassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(220, 111, 148, 194),
+            Color.argb(232, 90, 77, 139),
             color,
-            Color.argb(205, 18, 29, 48)
+            Color.argb(220, 16, 17, 29)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
-        setStroke(dp(1), 0x99FFFFFF.toInt())
+        setStroke(dp(1), 0x88D9D0FF.toInt())
     }
 
     private fun showAbout() {
