@@ -5,6 +5,9 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -134,7 +137,7 @@ class StreamGurdActivity : Activity() {
         val bg = Color.rgb(10, 11, 16)
         val surface = Color.rgb(27, 29, 42)
         val muted = Color.rgb(176, 181, 199)
-        val accent = Color.rgb(177, 160, 255)
+        val accent = Color.rgb(224, 226, 230)
 
         root = FrameLayout(this).apply { setBackgroundColor(bg) }
         contentLayout = LinearLayout(this).apply {
@@ -221,16 +224,21 @@ class StreamGurdActivity : Activity() {
             tag = "top-actions-panel"
             orientation = LinearLayout.VERTICAL
             setPadding(dp(7), dp(7), dp(7), dp(1))
-            background = darkGlassShape(0xC0101218.toInt(), 22)
+            background = darkGlassShape(0xA91A1B1E.toInt(), 22)
             elevation = dp(16).toFloat()
             visibility = View.GONE
         }
         topActions.addView(actionRow, LinearLayout.LayoutParams(dp(246), -2))
+        fun toggleTopActions() {
+            val show = topActions.visibility != View.VISIBLE
+            topActions.visibility = if (show) View.VISIBLE else View.GONE
+            applyMenuBackdropBlur(show)
+        }
         val topActionsToggle = actionButton("☰") {
-            topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            toggleTopActions()
         }.apply {
             textSize = 21f
-            background = darkGlassShape(0xD014171D.toInt(), 28)
+            background = darkGlassShape(0xD01A1B1E.toInt(), 28)
             elevation = dp(18).toFloat()
         }
         root.addView(topActions, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
@@ -295,7 +303,7 @@ class StreamGurdActivity : Activity() {
 
         homePanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = darkGlassShape(0xD9232638.toInt(), 26).apply { setStroke(dp(1), 0x66C9BCFF) }
+            background = darkGlassShape(0xD91B1C20.toInt(), 26).apply { setStroke(dp(1), 0x55FFFFFF) }
         }
         val heroIcon = TextView(this).apply { text = "🏴‍☠️"; textSize = 36f; gravity = Gravity.CENTER; setTextColor(accent); background = darkGlassShape(0xD52D2B43.toInt(), 20) }
         homePanel.addView(heroIcon, LinearLayout.LayoutParams(dp(62), dp(62)).apply { gravity = Gravity.CENTER; bottomMargin = dp(14) })
@@ -323,7 +331,7 @@ class StreamGurdActivity : Activity() {
             setTextColor(Color.WHITE)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(151, 119, 255))
+                setColor(Color.rgb(34, 36, 40))
                 setStroke(dp(1), Color.argb(90, 255, 255, 255))
             }
             elevation = dp(20).toFloat()
@@ -682,13 +690,27 @@ class StreamGurdActivity : Activity() {
         currentMusic=null
     }
 
+    /**
+     * Mirrors RykoCollection's source-backed Haze glass: blur the live page beneath
+     * the floating drawer while keeping the drawer itself crisp and interactive.
+     * RenderEffect is the native View equivalent for this legacy View-based screen.
+     */
+    private fun applyMenuBackdropBlur(enabled: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        val effect = if (enabled) {
+            RenderEffect.createBlurEffect(dp(24).toFloat(), dp(24).toFloat(), Shader.TileMode.CLAMP)
+        } else null
+        contentLayout.setRenderEffect(effect)
+        if (::web.isInitialized) web.setRenderEffect(effect)
+    }
+
     private fun featureChip(label: String) = TextView(this).apply {
         text = label
         gravity = Gravity.CENTER
         textSize = 10f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(Color.rgb(236, 232, 255))
-        background = darkGlassShape(0xC12D2B43.toInt(), 18)
+        setTextColor(Color.rgb(232, 234, 238))
+        background = darkGlassShape(0xA9232529.toInt(), 18)
     }
 
     private fun actionButton(label: String, prominent: Boolean = false, click: () -> Unit) = TextView(this).apply {
@@ -696,9 +718,9 @@ class StreamGurdActivity : Activity() {
         gravity = Gravity.CENTER
         textSize = 12f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(if (prominent) Color.rgb(24, 20, 42) else Color.rgb(247, 246, 255))
-        background = darkGlassShape(if (prominent) 0xE2B7A4FF.toInt() else 0xA52D2B43.toInt(), 16).apply {
-            setStroke(dp(1), if (prominent) 0xBBD8CCFF.toInt() else 0x55FFFFFF)
+        setTextColor(Color.rgb(247, 248, 250))
+        background = darkGlassShape(if (prominent) 0xD83B3E43.toInt() else 0xA9232529.toInt(), 16).apply {
+            setStroke(dp(1), if (prominent) 0x99FFFFFF.toInt() else 0x55FFFFFF)
         }
         elevation = dp(2).toFloat()
         setOnClickListener { click() }
@@ -852,25 +874,25 @@ class StreamGurdActivity : Activity() {
     private fun darkGlassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(242, 42, 39, 62),
+            Color.argb(238, 38, 40, 44),
             color,
             Color.argb(232, 10, 11, 18)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
-        setStroke(dp(1), 0x66D9D0FF)
+        setStroke(dp(1), 0x55FFFFFF)
     }
 
     private fun glassShape(color: Int, radius: Int) = GradientDrawable(
         GradientDrawable.Orientation.TL_BR,
         intArrayOf(
-            Color.argb(232, 90, 77, 139),
+            Color.argb(230, 54, 56, 60),
             color,
             Color.argb(220, 16, 17, 29)
         )
     ).apply {
         cornerRadius = dp(radius).toFloat()
-        setStroke(dp(1), 0x88D9D0FF.toInt())
+        setStroke(dp(1), 0x66FFFFFF.toInt())
     }
 
     private fun showAbout() {
