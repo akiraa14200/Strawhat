@@ -178,7 +178,7 @@ fun NativeNewsroomPage() {
                     Icon(Icons.Default.Newspaper,null,tint=NewsMuted,modifier=Modifier.size(36.dp))
                     Text(error ?: "No stories match this filter.",color=Color.White,fontWeight=FontWeight.SemiBold)
                     Text("Try another category or refresh.",color=NewsMuted,fontSize=12.sp)
-                    Text("Try again",color=NewsAccent,modifier=Modifier.clickable{kotlinx.coroutines.MainScope().launch{refresh(true)}}.padding(10.dp))
+                    Text("Try again",color=NewsAccent,modifier=Modifier.clickable{scope.launch{refresh(true)}}.padding(10.dp))
                 }
             } else items(filtered.take(visibleCount),key={it.link}) { story ->
                 NewsCard(story){runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(story.link)))}}
