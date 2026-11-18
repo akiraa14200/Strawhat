@@ -291,7 +291,7 @@ class StreamGurdActivity : Activity() {
             }
         }
         topActionsToggle.setOnClickListener {
-            topActions.visibility = if (topActions.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            toggleTopActions()
         }
 
         statusRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(9), dp(4), dp(9), dp(4)); background = darkGlassShape(0xA6222432.toInt(), 14) }
