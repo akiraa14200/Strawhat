@@ -115,6 +115,7 @@ fun RykoApp() {
     var menuOpen by remember { mutableStateOf(false) }
     var mangaMode by remember { mutableStateOf(false) }
     var selectedEntry by remember { mutableStateOf<Int?>(null) }
+    var entryOriginTab by remember { mutableStateOf(MainTab.HOME) }
     var showExitDialog by remember { mutableStateOf(false) }
     var libraryRefreshToken by remember { mutableStateOf(0) }
 
@@ -143,13 +144,13 @@ fun RykoApp() {
             // Keep visited tabs composed while hidden so their data and scroll state survive tab changes.
             if (visitedTabs.contains(MainTab.HOME)) {
                 Box(Modifier.fillMaxSize().hazeSource(hazeState).graphicsLayer { alpha = if (tab == MainTab.HOME && selectedEntry == null && extraPage == null) 1f else 0f }.zIndex(if (tab == MainTab.HOME && selectedEntry == null && extraPage == null) 1f else -1f).then(if (tab == MainTab.HOME && selectedEntry == null && extraPage == null) Modifier else Modifier.offset(x = 10000.dp))) {
-                    Box(Modifier.fillMaxSize()) { NativeHome(mangaMode, onEntry = { selectedEntry = it }) }
+                    Box(Modifier.fillMaxSize()) { NativeHome(mangaMode, onEntry = { entryOriginTab = tab; selectedEntry = it }) }
                 }
             }
             if (visitedTabs.contains(MainTab.BROWSE)) {
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (tab == MainTab.BROWSE && selectedEntry == null && extraPage == null) 1f else 0f }.zIndex(if (tab == MainTab.BROWSE && selectedEntry == null && extraPage == null) 1f else -1f).then(if (tab == MainTab.BROWSE && selectedEntry == null && extraPage == null) Modifier else Modifier.offset(x = 10000.dp))) {
                     CompositionLocalProvider(LocalRykoHazeState provides browseHazeState) {
-                        Box(Modifier.fillMaxSize()) { BrowsePage(mangaMode, onEntry = { selectedEntry = it }) }
+                        Box(Modifier.fillMaxSize()) { BrowsePage(mangaMode, onEntry = { entryOriginTab = tab; selectedEntry = it }) }
                     }
                 }
             }
@@ -176,7 +177,7 @@ fun RykoApp() {
                 }
             }
 
-            if (selectedEntry != null) Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); EntryDetails(selectedEntry!!, mangaMode) { selectedEntry = null; tab = MainTab.ACCOUNT } } }
+            if (selectedEntry != null) Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); EntryDetails(selectedEntry!!, mangaMode) { selectedEntry = null; tab = entryOriginTab } } }
             else when (extraPage) {
                 ExtraPage.TRENDING -> Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativeRankingPage() } }
                 ExtraPage.SETTINGS -> Box(Modifier.fillMaxSize().hazeSource(hazeState)) { Column(Modifier.fillMaxSize()) { Spacer(Modifier.height(109.dp)); NativePlaceholder("Settings", "Appearance, language, notifications and app preferences.") } }
