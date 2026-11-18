@@ -43,7 +43,15 @@ private val NewsMuted = Color(0xFF96949F)
 private val NewsSurface = Color(0xFF111115)
 
 private data class NewsStory(val title:String,val link:String,val description:String,val date:String,val source:String,val category:String,val image:String?=null) {
-    val time:Long get() = runCatching { Instant.parse(date).toEpochMilli() }.getOrElse { runCatching { java.time.OffsetDateTime.parse(date).toInstant().toEpochMilli() }.getOrElse { runCatching { java.time.ZonedDateTime.parse(date, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() }.getOrDefault(0L) } }
+    val time:Long get() = parseNewsTimestamp(date)
+}
+private fun parseNewsTimestamp(value:String):Long {
+    if(value.isBlank()) return 0L
+    return runCatching { Instant.parse(value).toEpochMilli() }
+        .recoverCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }
+        .recoverCatching { java.time.ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() }
+        .recoverCatching { java.time.LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US)).toInstant(java.time.ZoneOffset.UTC).toEpochMilli() }
+        .getOrDefault(0L)
 }
 private object NewsCache { var stories:List<NewsStory> = emptyList(); var failed:List<String> = emptyList(); var loadedAt:Long = 0L }
 private fun JsonObject.field(key:String)=this[key]?.jsonPrimitive?.contentOrNull.orEmpty()
