@@ -720,8 +720,8 @@ class StreamGurdActivity : Activity() {
     }
 
     /**
-     * Captures only the page beneath the drawer, then blurs that snapshot.
-     * The drawer and its controls are deliberately excluded and remain crisp.
+     * Capture the live page without the menu, then blur the pixels themselves.
+     * This avoids relying on RenderEffect being applied to a WebView/ImageView.
      */
     private fun captureMenuBackdrop(menu: View, toggle: View) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || root.width <= 0 || root.height <= 0) {
@@ -730,39 +730,109 @@ class StreamGurdActivity : Activity() {
         }
         clearMenuBackdrop()
         val request = ++menuBackdropRequest
-        val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+        val capture = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
         val location = IntArray(2)
         root.getLocationInWindow(location)
         val source = Rect(location[0], location[1], location[0] + root.width, location[1] + root.height)
         menu.alpha = 0f
         toggle.alpha = 0f
-        PixelCopy.request(window, source, bitmap, copyCallback@{ result ->
+        PixelCopy.request(window, source, capture, copyCallback@{ result ->
             menu.alpha = 1f
             toggle.alpha = 1f
             if (request != menuBackdropRequest || menu.visibility != View.VISIBLE) {
-                bitmap.recycle()
+                capture.recycle()
                 return@copyCallback
             }
             if (result == PixelCopy.SUCCESS) {
-                val backdrop = ImageView(this).apply {
-                    setImageBitmap(bitmap)
-                    scaleType = ImageView.ScaleType.FIT_XY
-                    alpha = 0.88f
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        setRenderEffect(RenderEffect.createBlurEffect(dp(28).toFloat(), dp(28).toFloat(), Shader.TileMode.CLAMP))
+                try {
+                    val blurred = createStrongBackdropBlur(capture)
+                    capture.recycle()
+                    val backdrop = ImageView(this).apply {
+                        setImageBitmap(blurred)
+                        scaleType = ImageView.ScaleType.FIT_XY
+                        alpha = 0.82f
+                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                        // A neutral dark tint keeps white menu text readable without a purple cast.
+                        setColorFilter(Color.argb(34, 8, 10, 12), android.graphics.PorterDuff.Mode.SRC_ATOP)
                     }
-                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    val insertAt = root.indexOfChild(menu).coerceAtLeast(0)
+                    root.addView(backdrop, insertAt, FrameLayout.LayoutParams(-1, -1))
+                    menuBackdropView = backdrop
+                    menuBackdropBitmap = blurred
+                    applyMenuBackdropBlur(false)
+                    android.util.Log.d("StrawhatGlass", "Backdrop pixel blur applied")
+                } catch (error: Throwable) {
+                    if (!capture.isRecycled) capture.recycle()
+                    android.util.Log.e("StrawhatGlass", "Backdrop blur failed", error)
+                    applyMenuBackdropBlur(true)
                 }
-                val insertAt = root.indexOfChild(menu).coerceAtLeast(0)
-                root.addView(backdrop, insertAt, FrameLayout.LayoutParams(-1, -1))
-                menuBackdropView = backdrop
-                menuBackdropBitmap = bitmap
-                applyMenuBackdropBlur(false)
             } else {
-                bitmap.recycle()
+                capture.recycle()
+                android.util.Log.w("StrawhatGlass", "PixelCopy failed: $result")
                 applyMenuBackdropBlur(true)
             }
         }, mainHandler)
+    }
+
+    /**
+     * Downsample first, then run three horizontal/vertical box-blur passes.
+     * The final bitmap is enlarged by the ImageView, producing a smooth,
+     * strong backdrop blur at a fraction of the full-screen processing cost.
+     */
+    private fun createStrongBackdropBlur(source: Bitmap): Bitmap {
+        val scale = 6
+        val width = (source.width / scale).coerceAtLeast(1)
+        val height = (source.height / scale).coerceAtLeast(1)
+        var working = Bitmap.createScaledBitmap(source, width, height, true)
+        repeat(3) {
+            val pixels = IntArray(width * height)
+            working.getPixels(pixels, 0, width, 0, 0, width, height)
+            val horizontal = blurPixelPass(pixels, width, height, 7, true)
+            val vertical = blurPixelPass(horizontal, width, height, 7, false)
+            val next = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            next.setPixels(vertical, 0, width, 0, 0, width, height)
+            if (working !== source && !working.isRecycled) working.recycle()
+            working = next
+        }
+        return working
+    }
+
+    private fun blurPixelPass(input: IntArray, width: Int, height: Int, radius: Int, horizontal: Boolean): IntArray {
+        val output = IntArray(input.size)
+        val lineLength = if (horizontal) width else height
+        val lineCount = if (horizontal) height else width
+        val window = radius * 2 + 1
+        for (line in 0 until lineCount) {
+            var a = 0
+            var r = 0
+            var g = 0
+            var b = 0
+            for (offset in -radius..radius) {
+                val x = if (horizontal) offset.coerceIn(0, width - 1) else line
+                val y = if (horizontal) line else offset.coerceIn(0, height - 1)
+                val color = input[y * width + x]
+                a += Color.alpha(color); r += Color.red(color)
+                g += Color.green(color); b += Color.blue(color)
+            }
+            for (position in 0 until lineLength) {
+                val x = if (horizontal) position else line
+                val y = if (horizontal) line else position
+                output[y * width + x] = Color.argb(a / window, r / window, g / window, b / window)
+                val removeOffset = position - radius
+                val addOffset = position + radius + 1
+                val removeX = if (horizontal) removeOffset.coerceIn(0, width - 1) else line
+                val removeY = if (horizontal) line else removeOffset.coerceIn(0, height - 1)
+                val addX = if (horizontal) addOffset.coerceIn(0, width - 1) else line
+                val addY = if (horizontal) line else addOffset.coerceIn(0, height - 1)
+                val removeColor = input[removeY * width + removeX]
+                val addColor = input[addY * width + addX]
+                a += Color.alpha(addColor) - Color.alpha(removeColor)
+                r += Color.red(addColor) - Color.red(removeColor)
+                g += Color.green(addColor) - Color.green(removeColor)
+                b += Color.blue(addColor) - Color.blue(removeColor)
+            }
+        }
+        return output
     }
 
     private fun clearMenuBackdrop() {
@@ -773,6 +843,8 @@ class StreamGurdActivity : Activity() {
     }
 
     private fun applyMenuBackdropBlur(enabled: Boolean) {
+        // PixelCopy + createStrongBackdropBlur is the primary path. This is only
+        // a best-effort fallback when PixelCopy is unavailable or returns an error.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         val effect = if (enabled) RenderEffect.createBlurEffect(dp(24).toFloat(), dp(24).toFloat(), Shader.TileMode.CLAMP) else null
         contentLayout.setRenderEffect(effect)
