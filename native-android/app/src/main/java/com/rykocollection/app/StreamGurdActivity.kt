@@ -866,16 +866,34 @@ class StreamGurdActivity : Activity() {
         toast(message)
     }
 
+    private fun isKnownBlockedHost(destination: String): Boolean {
+        val target = canonicalHost(destination)
+        if (target.isBlank()) return false
+        return blocked.any { entry ->
+            val deniedHost = canonicalHost(entry)
+            target == deniedHost || target.endsWith(".$deniedHost")
+        }
+    }
+
     private fun shouldBlockTopLevelNavigation(destination: String, userInitiated: Boolean): Boolean {
         val target = canonicalHost(destination)
-        val knownAdHost = blocked.any { target == canonicalHost(it) || target.endsWith(".${canonicalHost(it)}") }
-        if (blocking && knownAdHost) return true
+        if (target.isBlank()) return true
+
+        // Known advertising / tracking destinations are blocked even if a page
+        // tries to disguise the navigation as a user click.
+        if (blocking && isKnownBlockedHost(target)) return true
+
+        // A real WebView gesture (not merely any recent touch/scroll) may open
+        // a new site. Trust that destination so its own redirects and subdomains
+        // can complete without opening an unrestricted redirect window.
         if (userInitiated) {
             trustedHost = target
             return false
         }
-        if (!blocking) return false
-        return !isTrustedSiteHost(target)
+
+        // Automatic redirects may remain on the current site's host tree,
+        // but cannot silently move the browser to an unrelated domain.
+        return blocking && !isTrustedSiteHost(target)
     }
 
     private fun featureChip(label: String) = TextView(this).apply {
@@ -912,10 +930,8 @@ class StreamGurdActivity : Activity() {
         }
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false)
-        web.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_UP) lastUserTouchAt = SystemClock.elapsedRealtime()
-            false
-        }
+        // Do not infer a user navigation from recent touches: scrolling or
+        // tapping unrelated controls must never authorize a later auto-redirect.
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val uri = request?.url ?: return null
@@ -939,14 +955,13 @@ class StreamGurdActivity : Activity() {
 
                 // Only guard top-level page changes. Embedded players, images, scripts,
                 // and other subframe resources remain available unless their host is blocked.
-                if (request.isForMainFrame) {
-                    val destination = uri.host?.lowercase(Locale.ROOT) ?: return true
-                    val recentTouch = lastUserTouchAt > 0L && SystemClock.elapsedRealtime() - lastUserTouchAt < 3500L
-                    val userInitiated = request.hasGesture() || recentTouch
-                    if (shouldBlockTopLevelNavigation(destination, userInitiated)) {
-                        status.text = "BLOCKED REDIRECT · $destination"
-                        return true
-                    }
+                if (!request.isForMainFrame) return false
+
+                val destination = uri.host?.lowercase(Locale.ROOT) ?: return true
+                val userInitiated = request.hasGesture()
+                if (shouldBlockTopLevelNavigation(destination, userInitiated)) {
+                    status.text = "BLOCKED REDIRECT · $destination"
+                    return true
                 }
                 return false
             }
@@ -957,8 +972,9 @@ class StreamGurdActivity : Activity() {
                 val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return true
                 if (scheme !in listOf("http", "https")) return true
                 val destination = uri.host?.lowercase(Locale.ROOT) ?: return true
-                val recentTouch = lastUserTouchAt > 0L && SystemClock.elapsedRealtime() - lastUserTouchAt < 3500L
-                if (shouldBlockTopLevelNavigation(destination, recentTouch)) {
+                // The legacy callback has no gesture metadata. Be conservative:
+                // allow same-site navigation, but block unrelated automatic hops.
+                if (shouldBlockTopLevelNavigation(destination, false)) {
                     status.text = "BLOCKED REDIRECT · $destination"
                     return true
                 }
