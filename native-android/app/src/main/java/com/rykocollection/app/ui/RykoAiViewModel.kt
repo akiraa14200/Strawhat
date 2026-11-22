@@ -64,7 +64,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         val prefs = getApplication<Application>().getSharedPreferences("ryko_ai", 0)
         val saved = prefs.getString("selected_model_id", "qwen3-0.6b-int4") ?: "qwen3-0.6b-int4"
         val selected = RykoAiModelDownloader.models.firstOrNull { it.id == saved }?.id ?: "qwen3-0.6b-int4"
-        _state.value = _state.value.copy(selectedModelId = selected, installedModelIds = RykoAiModelDownloader.models.filter { RykoAiModelDownloader.isInstalled(getApplication(), it.id) }.map { it.id }.toSet())
+        _state.value = _state.value.copy(selectedModelId = selected, installedModelIds = RykoAiModelDownloader.models.filter { RykoAiModelDownloader.hasModelFile(getApplication(), it.id) }.map { it.id }.toSet())
     }
 
     fun ensureReady() {
