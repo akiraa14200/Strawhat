@@ -279,6 +279,35 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(answer, false, listOf(media), manga))
     }
 
+    fun addCharacterResults(prompt: String, characters: List<com.rykocollection.app.data.AniListCharacter>) {
+        val answer = when {
+            characters.isEmpty() -> "I couldn't verify a matching character in the available catalogue. Try the character's alternate spelling or tell me the series."
+            characters.size > 1 -> "I found multiple possible character matches. Here are the closest catalogue matches:\n" +
+                characters.take(5).joinToString("\n") { "• ${it.name.full}" } +
+                "\nTell me which series you mean so I don't give you information about the wrong character."
+            else -> {
+                val character = characters.first()
+                val description = character.description
+                    ?.replace(Regex("<[^>]*>"), " ")
+                    ?.replace(Regex("\\s+"), " ")
+                    ?.trim()
+                    ?.take(850)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "The catalogue does not provide a character description."
+                buildString {
+                    append(character.name.full)
+                    append("\\n\\n")
+                    append(description)
+                    append("\\n\\nSource: AniList")
+                    character.siteUrl?.takeIf { it.startsWith("https://") }?.let { append("\\n").append(it) }
+                }
+            }
+        }
+        _state.value = _state.value.copy(
+            messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(answer, false)
+        )
+    }
+
     fun reportCatalogueError() {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage("AniList search needs an internet connection. The on-device chat can still work offline.", false)
