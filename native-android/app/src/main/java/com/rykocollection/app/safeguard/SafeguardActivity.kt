@@ -409,25 +409,22 @@ private fun SafeguardPage(onExit: () -> Unit) {
                                                 if (url.isNullOrBlank()) return
                                                 val incomingHost = NavigationPolicy.hostOf(url)
                                                 val expectedHost = expectedNavigationHost
-                                                if (expectedHost.isNotBlank() && NavigationPolicy.isSameSite(incomingHost, expectedHost)) {
+                                                if (expectedHost.isNotBlank()) {
                                                     expectedNavigationHost = ""
-                                                    committedHost = incomingHost
-                                                    currentUrl = url
-                                                    address = url
+                                                    if (NavigationPolicy.isSameSite(incomingHost, expectedHost)) {
+                                                        committedHost = incomingHost
+                                                        currentUrl = url
+                                                        address = url
+                                                        return
+                                                    }
+                                                    view?.stopLoading()
+                                                    addEvent(incomingHost, "Blocked: automatic redirect changed host from $expectedHost")
                                                     return
                                                 }
                                                 if (committedHost.isNotBlank() && !NavigationPolicy.isSameSite(incomingHost, committedHost)) {
-                                                    val decision = NavigationPolicy.decide(url, currentUrlState, false, trustedState, enabledState)
-                                                    if (decision.action != NavigationAction.ALLOW) {
-                                                        view?.stopLoading()
-                                                        if (decision.action == NavigationAction.ASK) {
-                                                            pendingNavigation = PendingNavigation(url, decision.host, decision.reason)
-                                                            addEvent(decision.host, "Confirmation required")
-                                                        } else {
-                                                            addEvent(decision.host, "Blocked: ${decision.reason}")
-                                                        }
-                                                        return
-                                                    }
+                                                    view?.stopLoading()
+                                                    addEvent(incomingHost, "Blocked: automatic redirect changed host from $committedHost")
+                                                    return
                                                 }
                                                 expectedNavigationHost = ""
                                                 committedHost = incomingHost
@@ -502,7 +499,7 @@ private fun SafeguardPage(onExit: () -> Unit) {
                 SafeguardTab.SETTINGS -> {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Protection settings", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        SettingRow("Balanced protection", "Filter known ad domains and ask before uncertain automatic redirects.", protectionEnabled) {
+                        SettingRow("Balanced protection", "Filter known ad domains and block automatic redirects to a different domain or subdomain.", protectionEnabled) {
                             protectionEnabled = it
                             prefs.edit().putBoolean("enabled", it).apply()
                         }
