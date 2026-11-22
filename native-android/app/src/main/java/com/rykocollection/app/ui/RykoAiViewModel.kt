@@ -227,6 +227,16 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun addRecommendationResults(prompt: String, results: List<AniListMedia>, manga: Boolean, genre: String? = null) {
+        val category = if (manga) "manga" else "anime"
+        val intro = when {
+            results.isEmpty() -> "I couldn't find matching $category titles in AniList. Try another genre or search term."
+            genre != null -> "Here are ${results.size} popular $genre $category picks from AniList:"
+            else -> "Here are ${results.size} popular $category picks from AniList:"
+        }
+        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(intro, false, results))
+    }
+
     fun addCatalogueResults(prompt: String, results: List<AniListMedia>) {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage(
