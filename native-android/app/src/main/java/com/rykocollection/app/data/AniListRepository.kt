@@ -387,11 +387,12 @@ class AniListRepository {
         return result
     }
 
-    fun close() = client.close()
-}
-}type: MediaType!) {
+    suspend fun recommendMedia(manga: Boolean = false, genre: String? = null, limit: Int = 5): List<AniListMedia> {
+        val genreFilter = if (genre.isNullOrBlank()) "" else ", genre_in: [\"${genre}\"]"
+        val query = """
+            query {
               Page(page: 1, perPage: ${limit}) {
-                media(type: $type, sort: POPULARITY_DESC, isAdult: false${genreFilter}) {
+                media(type: ${if (manga) "MANGA" else "ANIME"}, sort: POPULARITY_DESC, isAdult: false${genreFilter}) {
                   id title { english romaji native }
                   coverImage { large extraLarge }
                   averageScore format seasonYear genres
@@ -399,10 +400,11 @@ class AniListRepository {
               }
             }
         """.trimIndent()
-        val variables = buildJsonObject { put("type", if (manga) "MANGA" else "ANIME") }
-        return request(query, variables).data?.Page?.media.orEmpty()
+        return request(query, buildJsonObject {}).data?.Page?.media.orEmpty()
     }
 
+    fun close() = client.close()
+}
     suspend fun latestAiringEpisodes(): List<AniListAiring> {
         val query = """
             query {
