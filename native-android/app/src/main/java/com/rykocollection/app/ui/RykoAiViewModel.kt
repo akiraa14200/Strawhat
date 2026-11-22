@@ -248,6 +248,26 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    fun addMediaDetails(prompt: String, media: AniListMedia, detail: com.rykocollection.app.data.AniListDetail) {
+        val description = detail.description
+            ?.replace(Regex("<[^>]*>"), " ")
+            ?.replace(Regex("\\s+"), " ")
+            ?.trim()
+            ?.take(900)
+            ?.takeIf { it.isNotBlank() } ?: "AniList has no synopsis available for this title."
+        val facts = listOfNotNull(
+            detail.format,
+            detail.seasonYear?.toString(),
+            detail.status,
+            detail.chapters?.let { "$it chapters" },
+            detail.volumes?.let { "$it volumes" },
+            detail.averageScore?.let { "Score $it/100" },
+            detail.countryOfOrigin
+        ).joinToString(" · ")
+        val answer = "${media.title.display}\\n$facts\\n\\n$description"
+        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(answer, false, listOf(media)))
+    }
+
     fun reportCatalogueError() {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage("AniList search needs an internet connection. The on-device chat can still work offline.", false)
