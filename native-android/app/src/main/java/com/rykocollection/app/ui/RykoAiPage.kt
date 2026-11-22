@@ -188,7 +188,8 @@ internal fun RykoAiPage(
                 }
                 return
             }
-            RykoAiIntent.NEWS, RykoAiIntent.GENERAL -> Unit
+            RykoAiIntent.NEWS -> aiViewModel.addNewsUnavailable(prompt)
+            RykoAiIntent.GENERAL -> Unit
         }
         aiViewModel.send(prompt)
     }
