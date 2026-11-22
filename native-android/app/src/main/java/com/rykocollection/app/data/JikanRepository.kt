@@ -45,7 +45,7 @@ class JikanRepository {
         }
     }
 
-    private fun JsonObject.toAniListMedia(manga: Boolean): AniListMedia {
+    private fun JsonObject.toAniListMedia(manga: Boolean): AniListMedia? {
         val malId = this["mal_id"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: return null
         val titleObject = this["titles"]?.jsonArray?.firstOrNull { item ->
             runCatching { item.jsonObject["type"]?.jsonPrimitive?.contentOrNull == "English" }.getOrDefault(false)
