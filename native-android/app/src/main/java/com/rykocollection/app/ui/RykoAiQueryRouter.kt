@@ -60,7 +60,7 @@ internal object RykoAiQueryRouter {
 
         val candidateTitle = cleanCatalogueQuery(text)
         val looksLikeStandaloneEntity = candidateTitle.matches(
-            Regex("^[A-Z][\\p{L}’'-]+(?:\\s+[A-Z][\\p{L}’'-]+){1,5}$")
+            Regex("^[A-Z][\\p{L}’'-]+(?:\\s+(?:[A-Z][\\p{L}’'-]+|of|the|and|to|a|an|in|on|for|my)){1,5}$")
         ) && candidateTitle.split(Regex("\\s+")).firstOrNull()?.lowercase() !in setOf("i", "the", "what", "who", "why", "how")
 
         val intent = when {
@@ -101,7 +101,7 @@ internal object RykoAiQueryRouter {
             ""
         )
         .replace(
-            Regex("(?i)^\\s*(?:what is|what's|who is|who's|complete details about|details about|details of|information about|about|the plot of|the story of)\\s+"),
+            Regex("(?i)^\\s*(?:what is|what's|who is|who's|complete details about|details about|details of|information about|about)\\s+"),
             ""
         )
         .replace(Regex("[?!.:,;]+$"), "")
