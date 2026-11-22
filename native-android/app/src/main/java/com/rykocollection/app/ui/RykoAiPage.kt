@@ -127,10 +127,18 @@ internal fun RykoAiPage(
                     if (matches.isEmpty() && !requestedManga && !requestedAnime) {
                         matches = repository.searchMedia(titleTerm, !mangaMode, false)
                     }
-                    val match = matches.firstOrNull()
-                    val detail = match?.let { repository.getMedia(it.id) }
-                    if (match != null && detail != null) aiViewModel.addMediaDetails(prompt, match, detail, requestedMangaMode)
-                    else aiViewModel.addCatalogueResults(prompt, matches.take(5), requestedMangaMode)
+                    if (matches.isNotEmpty()) {
+                        val match = matches.first()
+                        val detail = repository.getMedia(match.id)
+                        if (detail != null) aiViewModel.addMediaDetails(prompt, match, detail, requestedMangaMode)
+                        else aiViewModel.addCatalogueResults(prompt, matches.take(5), requestedMangaMode)
+                    } else {
+                        val secondary = com.rykocollection.app.data.JikanRepository()
+                        try {
+                            val externalMatches = secondary.searchMedia(titleTerm, requestedMangaMode, requestedManhwa)
+                            aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
+                        } finally { secondary.close() }
+                    }
                 } catch (_: Exception) {
                     aiViewModel.reportCatalogueError()
                 } finally {
@@ -206,7 +214,16 @@ internal fun RykoAiPage(
                     val results = repository.recommendMedia(searchManga, searchGenre, 5, searchManhwa)
                     aiViewModel.addRecommendationResults(prompt, results, searchManga, searchGenre, label)
                 } else {
-                    aiViewModel.addCatalogueResults(prompt, repository.searchMedia(searchTerm, searchManga, searchManhwa).take(6), searchManga)
+                    val primary = repository.searchMedia(searchTerm, searchManga, searchManhwa)
+                    if (primary.isNotEmpty()) {
+                        aiViewModel.addCatalogueResults(prompt, primary.take(6), searchManga)
+                    } else {
+                        val secondary = com.rykocollection.app.data.JikanRepository()
+                        try {
+                            val external = secondary.searchMedia(searchTerm, searchManga, searchManhwa)
+                            aiViewModel.addCatalogueResults(prompt, external.take(6), searchManga)
+                        } finally { secondary.close() }
+                    }
                 }
             } catch (_: Exception) {
                 aiViewModel.reportCatalogueError()
@@ -281,7 +298,7 @@ internal fun RykoAiPage(
                     message.results.forEach { media ->
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 7.dp)
-                                .clickable { uriHandler.openUri("https://anilist.co/" + (if (message.resultManga ?: mangaMode) "manga/" else "anime/") + media.id) },
+                                .clickable { uriHandler.openUri(media.externalUrl ?: ("https://anilist.co/" + (if (message.resultManga ?: mangaMode) "manga/" else "anime/") + media.id)) },
                             color = Color(0xFF17171C), shape = RoundedCornerShape(14.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .07f))
                         ) {
@@ -295,7 +312,7 @@ internal fun RykoAiPage(
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(media.title.display, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                     Text(listOfNotNull(media.format, media.seasonYear?.toString(), media.averageScore?.let { "Score $it" }).joinToString(" · "), color = AiMuted, fontSize = 10.sp)
-                                    Text("Open verified AniList entry ↗", color = AiViolet, fontSize = 10.sp)
+                                    Text(if (media.externalUrl != null) "Open MyAnimeList entry ↗" else "Open AniList entry ↗", color = AiViolet, fontSize = 10.sp)
                                 }
                             }
                         }
