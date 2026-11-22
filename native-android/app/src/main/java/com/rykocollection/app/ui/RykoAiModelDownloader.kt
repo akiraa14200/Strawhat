@@ -19,15 +19,26 @@ internal data class RykoAiModelSpec(
     val url: String,
     val estimatedBytes: Long,
     val minimumBytes: Long,
-    val sha256: String? = null
+    val sha256: String? = null,
+    val useGpu: Boolean = true
 )
 
 internal object RykoAiModelDownloader {
     val models = listOf(
         RykoAiModelSpec(
+            id = "qwen3.5-4b-mixed-int4",
+            name = "Qwen3.5 4B · Mixed INT4",
+            description = "Best answer quality for 8 GB phones · CPU mode · ~2.75 GB download",
+            fileName = "Qwen3.5-4B_mixed_int4.litertlm",
+            url = "https://huggingface.co/litert-community/Qwen3.5-4B/resolve/main/Qwen3.5-4B_mixed_int4.litertlm",
+            estimatedBytes = 2_950_000_000L,
+            minimumBytes = 2_700_000_000L,
+            useGpu = false
+        ),
+        RykoAiModelSpec(
             id = "qwen3-0.6b-int4",
             name = "Qwen3 0.6B · INT4",
-            description = "Fast, compact model · Recommended for 8 GB RAM",
+            description = "Fast lightweight fallback · Lower answer quality",
             fileName = "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm",
             url = "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm",
             estimatedBytes = 328L * 1024L * 1024L,
@@ -75,7 +86,11 @@ internal object RykoAiModelDownloader {
 
             val partial = File(directory(context), model.fileName + ".part")
             if (partial.length() > model.estimatedBytes * 2L) partial.delete()
-            val requiredSpace = model.estimatedBytes + 100L * 1024L * 1024L
+            // Qwen3.5 4B creates a large one-time XNNPACK cache on first CPU load.
+            // Reserve model + cache + headroom so download does not consume the space
+            // needed to initialize the model afterward.
+            val cacheReserve = if (model.id == "qwen3.5-4b-mixed-int4") 3_200_000_000L else 100L * 1024L * 1024L
+            val requiredSpace = model.estimatedBytes + cacheReserve
             if (directory(context).usableSpace < requiredSpace) {
                 throw IllegalStateException("Not enough free storage. Please free at least " +
                     (requiredSpace / (1024L * 1024L)) + " MB and retry.")
