@@ -36,6 +36,20 @@ class RykoAiQueryRouterTest {
         assertEquals("The Story of My Life", query)
     }
 
+
+    @Test
+    fun tellMeAboutTitleUsesEntityLookup() {
+        val route = RykoAiQueryRouter.route("Tell me about Maybe Meant to Be", mangaMode = false)
+        assertEquals(RykoAiIntent.ENTITY_LOOKUP, route.intent)
+        assertEquals("Maybe Meant to Be", route.query)
+    }
+
+    @Test
+    fun opinionQuestionIsNotMistakenForTitleDetails() {
+        val route = RykoAiQueryRouter.route("What do you think about One Piece?", mangaMode = true)
+        assertEquals(RykoAiIntent.GENERAL, route.intent)
+    }
+
     @Test
     fun mangaModeDefaultsOnlyForCatalogueIntent() {
         val title = RykoAiQueryRouter.route("Complete details about Maybe Meant to Be", true)
