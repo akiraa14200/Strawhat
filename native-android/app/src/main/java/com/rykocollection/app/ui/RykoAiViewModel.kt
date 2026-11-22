@@ -227,8 +227,8 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addRecommendationResults(prompt: String, results: List<AniListMedia>, manga: Boolean, genre: String? = null) {
-        val category = if (manga) "manga" else "anime"
+    fun addRecommendationResults(prompt: String, results: List<AniListMedia>, manga: Boolean, genre: String? = null, displayLabel: String? = null) {
+        val category = displayLabel ?: if (manga) "manga" else "anime"
         val intro = when {
             results.isEmpty() -> "I couldn't find matching $category titles in AniList. Try another genre or search term."
             genre != null -> "Here are ${results.size} popular $genre $category picks from AniList:"
