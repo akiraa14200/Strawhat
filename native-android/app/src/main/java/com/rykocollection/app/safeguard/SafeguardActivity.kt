@@ -301,7 +301,7 @@ private fun SafeguardPage(onExit: () -> Unit) {
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            MetricCard("Blocked today", events.count { it.reason.contains("blocked", true) || it.reason.contains("ad", true) }.toString(), Modifier.weight(1f))
+                            MetricCard("Blocked", events.count { it.reason.contains("blocked", true) || it.reason.contains("ad", true) }.toString(), Modifier.weight(1f))
                             MetricCard("Activity", events.size.toString(), Modifier.weight(1f))
                         }
                         Row(
@@ -419,6 +419,8 @@ private fun SafeguardPage(onExit: () -> Unit) {
                                                 addEvent(NavigationPolicy.hostOf(request?.url?.toString()), "Blocked by Android Safe Browsing")
                                             }
                                         }
+                                        // The address may have been submitted before this WebView was created.
+                                        if (currentUrlState.isNotBlank()) loadUrl(currentUrlState)
                                     }
                                 },
                                 update = { webView = it }
