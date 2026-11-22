@@ -96,87 +96,93 @@ internal fun RykoAiPage(
         if (prompt.isEmpty() || !state.ready || state.sending || catalogueLoading) return
         input = ""
         keyboard?.hide()
-        val normalized = prompt.lowercase()
-        val requestedManga = Regex("\\b(manga|manhwa|manhua|webtoon)\\b").containsMatchIn(normalized)
-        val requestedManhwa = Regex("\\b(manhwa|webtoon)\\b").containsMatchIn(normalized)
-        val requestedAnime = Regex("\\banime\\b").containsMatchIn(normalized)
-        val requestedMangaMode = when {
-            requestedManga -> true
-            requestedAnime -> false
-            else -> mangaMode
-        }
-        val detailsIntent = Regex("\\b(details?|story|plot|synopsis|summary|about|info|information|chapters?|volumes?|status|author|artist|what is|tell me about|explain|release date|published)\\b").containsMatchIn(normalized)
-        val correctionIntent = Regex("\\b(maybe|meant|actually|rather|instead|correction)\\b").containsMatchIn(normalized) &&
-            (requestedManga || requestedAnime)
-        val recommendationIntent = Regex("\\b(recommend|recommendation|top\\s*\\d+|best|suggest|suggestion|list|popular|good|give me|show me)\\b").containsMatchIn(normalized) ||
-            ((requestedManga || requestedAnime) && !detailsIntent) || correctionIntent
-        val titleTerm = prompt
-            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|details?|story|plot|synopsis|summary|about|info|information|chapters?|volumes?|status|author|artist|please|tell me|what is|give me|show me|best|top|popular|recommendations?|list)\\b"), " ")
-            .replace(Regex("(?i)\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports)\\b"), " ")
-            .replace(Regex("[^a-zA-Z0-9가-힣一-龯ぁ-んァ-ン ]"), " ")
-            .trim()
-        val genre = listOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
-            .firstOrNull { normalized.contains(it.lowercase()) }
+        val route = RykoAiQueryRouter.route(prompt, mangaMode)
+        val requestedMangaMode = if (route.medium == RykoAiMedium.UNKNOWN) mangaMode else route.isManga
+        val requestedManhwa = route.medium == RykoAiMedium.MANHWA || route.medium == RykoAiMedium.WEBTOON
 
-        if (detailsIntent && titleTerm.isNotBlank()) {
-            catalogueLoading = true
-            scope.launch {
-                val repository = AniListRepository()
-                try {
-                    var matches = repository.searchMedia(titleTerm, requestedMangaMode, requestedManhwa)
-                    if (matches.isEmpty() && !requestedManga && !requestedAnime) {
-                        matches = repository.searchMedia(titleTerm, !mangaMode, false)
-                    }
-                    if (matches.isNotEmpty()) {
-                        val match = matches.first()
-                        val detail = repository.getMedia(match.id)
-                        if (detail != null) aiViewModel.addMediaDetails(prompt, match, detail, requestedMangaMode)
-                        else aiViewModel.addCatalogueResults(prompt, matches.take(5), requestedMangaMode)
-                    } else {
-                        val secondary = com.rykocollection.app.data.JikanRepository()
-                        try {
-                            val externalMatches = secondary.searchMedia(titleTerm, requestedMangaMode, requestedManhwa)
-                            aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
-                        } finally { secondary.close() }
-                    }
-                } catch (_: Exception) {
-                    aiViewModel.reportCatalogueError()
-                } finally {
-                    repository.close()
-                    catalogueLoading = false
+        when (route.intent) {
+            RykoAiIntent.CHARACTER -> {
+                if (route.query.isBlank()) {
+                    aiViewModel.send(prompt)
+                    return
                 }
-            }
-            return
-        }
-
-        if (recommendationIntent && (requestedManga || requestedAnime || correctionIntent)) {
-            val requestedLabel = when {
-                requestedManhwa -> "manhwa"
-                normalized.contains("manhua") -> "manhua"
-                normalized.contains("webtoon") -> "webtoon"
-                requestedManga -> "manga"
-                else -> "anime"
-            }
-            catalogueLoading = true
-            scope.launch {
-                val repository = AniListRepository()
-                try {
-                    val results = repository.recommendMedia(
-                        manga = requestedMangaMode,
-                        genre = genre,
-                        limit = 5,
-                        manhwa = requestedManhwa
-                    )
-                    aiViewModel.addRecommendationResults(prompt, results, requestedMangaMode, genre, requestedLabel)
-                } catch (_: Exception) {
-                    aiViewModel.addCatalogueResults(prompt, emptyList(), requestedMangaMode)
-                    aiViewModel.reportCatalogueError()
-                } finally {
-                    repository.close()
-                    catalogueLoading = false
+                catalogueLoading = true
+                scope.launch {
+                    val repository = AniListRepository()
+                    try {
+                        val characters = repository.searchCharacters(route.query)
+                        aiViewModel.addCharacterResults(prompt, characters)
+                    } catch (_: Exception) {
+                        aiViewModel.addCharacterResults(prompt, emptyList())
+                    } finally {
+                        repository.close()
+                        catalogueLoading = false
+                    }
                 }
+                return
             }
-            return
+            RykoAiIntent.DETAILS, RykoAiIntent.TITLE_SEARCH -> {
+                if (route.query.isBlank()) {
+                    aiViewModel.send(prompt)
+                    return
+                }
+                catalogueLoading = true
+                scope.launch {
+                    val repository = AniListRepository()
+                    try {
+                        val matches = repository.searchMedia(route.query, requestedMangaMode, requestedManhwa)
+                        if (matches.isNotEmpty()) {
+                            val match = matches.first()
+                            val detail = repository.getMedia(match.id)
+                            if (detail != null) aiViewModel.addMediaDetails(prompt, match, detail, requestedMangaMode)
+                            else aiViewModel.addCatalogueResults(prompt, matches.take(5), requestedMangaMode)
+                        } else {
+                            val secondary = com.rykocollection.app.data.JikanRepository()
+                            try {
+                                val externalMatches = secondary.searchMedia(route.query, requestedMangaMode, requestedManhwa)
+                                aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
+                            } finally { secondary.close() }
+                        }
+                    } catch (_: Exception) {
+                        aiViewModel.reportCatalogueError()
+                    } finally {
+                        repository.close()
+                        catalogueLoading = false
+                    }
+                }
+                return
+            }
+            RykoAiIntent.RECOMMENDATIONS -> {
+                val requestedLabel = when (route.medium) {
+                    RykoAiMedium.MANHWA -> "manhwa"
+                    RykoAiMedium.MANHUA -> "manhua"
+                    RykoAiMedium.WEBTOON -> "webtoon"
+                    RykoAiMedium.MANGA -> "manga"
+                    RykoAiMedium.ANIME -> "anime"
+                    RykoAiMedium.UNKNOWN -> if (mangaMode) "manga" else "anime"
+                }
+                catalogueLoading = true
+                scope.launch {
+                    val repository = AniListRepository()
+                    try {
+                        val results = repository.recommendMedia(
+                            manga = requestedMangaMode,
+                            genre = route.genre,
+                            limit = route.requestedCount,
+                            manhwa = requestedManhwa
+                        )
+                        aiViewModel.addRecommendationResults(prompt, results, requestedMangaMode, route.genre, requestedLabel)
+                    } catch (_: Exception) {
+                        aiViewModel.addCatalogueResults(prompt, emptyList(), requestedMangaMode)
+                        aiViewModel.reportCatalogueError()
+                    } finally {
+                        repository.close()
+                        catalogueLoading = false
+                    }
+                }
+                return
+            }
+            RykoAiIntent.NEWS, RykoAiIntent.GENERAL -> Unit
         }
         aiViewModel.send(prompt)
     }
