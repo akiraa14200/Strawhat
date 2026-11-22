@@ -244,7 +244,7 @@ class AniListRepository {
     ): List<AniListMedia> {
         val allowedGenres = setOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
         val safeGenre = genre?.takeIf { it in allowedGenres }
-        val genreFilter = safeGenre?.let { ", genre_in: [\\"$it\\"]" } ?: ""
+        val genreFilter = safeGenre?.let { ", genre_in: [\"$it\"]" } ?: ""
         val mediaType = if (manga) "MANGA" else "ANIME"
         // AniList stores Korean webtoons/manhwa under MANGA; countryOfOrigin=KR
         // filters actual Korean-origin entries rather than relabelling Japanese manga.
