@@ -54,6 +54,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
     private var engine: Engine? = null
     private var conversation: Conversation? = null
     private var loadJob: Job? = null
+    private var generationJob: Job? = null
 
     fun ensureReady() {
         if (_state.value.ready || _state.value.downloading || _state.value.initializing) return
@@ -133,7 +134,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
             sending = true,
             error = null
         )
-        engineScope.launch {
+        generationJob = engineScope.launch {
             try {
                 val activeConversation = checkNotNull(conversation) { "The model is not ready." }
                 // Accumulate tokens off the UI state and publish at a capped cadence.
@@ -183,6 +184,13 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage("AniList search needs an internet connection. The on-device chat can still work offline.", false)
         )
+    }
+
+    fun stopGeneration() {
+        runCatching { conversation?.cancelProcess() }
+        generationJob?.cancel()
+        generationJob = null
+        _state.value = _state.value.copy(sending = false)
     }
 
     fun releaseModel() {
