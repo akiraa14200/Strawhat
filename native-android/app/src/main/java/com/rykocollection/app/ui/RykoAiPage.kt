@@ -86,29 +86,11 @@ internal fun RykoAiPage(
     var input by remember { mutableStateOf("") }
     var catalogueLoading by remember { mutableStateOf(false) }
     var showModelManager by remember { mutableStateOf(false) }
-    val processedRecommendationReplies = remember { mutableSetOf<String>() }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(Unit) { aiViewModel.ensureReady() }
-    LaunchedEffect(state.sending, state.messages.size) {
-        if (!state.sending) {
-            val reply = state.messages.lastOrNull()?.takeIf { !it.fromUser && it.text.isNotBlank() }?.text.orEmpty()
-            if (reply.isNotBlank() && processedRecommendationReplies.add(reply)) {
-                val titles = Regex("\\\"([^\\\"\\n]{2,80})\\\"").findAll(reply).map { it.groupValues[1].trim() }.distinct().take(5).toList()
-                if (titles.isNotEmpty()) {
-                    val repository = AniListRepository()
-                    try {
-                        val matches = titles.flatMap { repository.searchMedia(it, mangaMode).take(1) }.distinctBy { it.id }
-                        if (matches.isNotEmpty()) aiViewModel.attachCatalogueResults(matches)
-                    } catch (_: Exception) {
-                        // Keep the local chat available when AniList cannot be reached.
-                    } finally { repository.close() }
-                }
-            }
-        }
-    }
     fun sendPrompt() {
         val prompt = input.trim()
         if (prompt.isEmpty() || !state.ready || state.sending || catalogueLoading) return
@@ -147,8 +129,8 @@ internal fun RykoAiPage(
                     }
                     val match = matches.firstOrNull()
                     val detail = match?.let { repository.getMedia(it.id) }
-                    if (match != null && detail != null) aiViewModel.addMediaDetails(prompt, match, detail)
-                    else aiViewModel.addCatalogueResults(prompt, matches.take(5))
+                    if (match != null && detail != null) aiViewModel.addMediaDetails(prompt, match, detail, requestedMangaMode)
+                    else aiViewModel.addCatalogueResults(prompt, matches.take(5), requestedMangaMode)
                 } catch (_: Exception) {
                     aiViewModel.reportCatalogueError()
                 } finally {
@@ -179,7 +161,7 @@ internal fun RykoAiPage(
                     )
                     aiViewModel.addRecommendationResults(prompt, results, requestedMangaMode, genre, requestedLabel)
                 } catch (_: Exception) {
-                    aiViewModel.addCatalogueResults(prompt, emptyList())
+                    aiViewModel.addCatalogueResults(prompt, emptyList(), requestedMangaMode)
                     aiViewModel.reportCatalogueError()
                 } finally {
                     repository.close()
@@ -210,7 +192,7 @@ internal fun RykoAiPage(
         scope.launch {
             val repository = AniListRepository()
             try {
-                aiViewModel.addCatalogueResults(prompt, repository.searchMedia(searchTerm, searchManga, searchManhwa).take(6))
+                aiViewModel.addCatalogueResults(prompt, repository.searchMedia(searchTerm, searchManga, searchManhwa).take(6), searchManga)
             } catch (_: Exception) {
                 aiViewModel.reportCatalogueError()
             } finally {
@@ -284,7 +266,7 @@ internal fun RykoAiPage(
                     message.results.forEach { media ->
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 7.dp)
-                                .clickable { uriHandler.openUri("https://anilist.co/" + (if (mangaMode) "manga/" else "anime/") + media.id) },
+                                .clickable { uriHandler.openUri("https://anilist.co/" + (if (message.resultManga ?: mangaMode) "manga/" else "anime/") + media.id) },
                             color = Color(0xFF17171C), shape = RoundedCornerShape(14.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .07f))
                         ) {
