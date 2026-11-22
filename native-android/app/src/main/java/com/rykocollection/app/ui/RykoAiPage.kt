@@ -85,6 +85,7 @@ internal fun RykoAiPage(
     val state by aiViewModel.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
     var catalogueLoading by remember { mutableStateOf(false) }
+    var showModelManager by remember { mutableStateOf(false) }
     val processedRecommendationReplies = remember { mutableSetOf<String>() }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -141,17 +142,40 @@ internal fun RykoAiPage(
                 Text("Ryko AI", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Text("Private on-device anime & manga assistant", color = AiMuted, fontSize = 10.sp)
             }
-            Surface(shape = RoundedCornerShape(50), color = Color(0xFF24212F)) {
-                Text("ON-DEVICE", color = AiViolet, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
+            Surface(shape = RoundedCornerShape(50), color = Color(0xFF24212F), modifier = Modifier.clickable { showModelManager = !showModelManager }) {
+                Text("MODELS", color = AiViolet, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp))
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, AiViolet.copy(alpha = .55f), Color.Transparent))))
 
+        if (showModelManager) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("ON-DEVICE MODELS", color = AiViolet, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                RykoAiModelDownloader.models.forEach { model ->
+                    val installed = model.id in state.installedModelIds
+                    val selected = model.id == state.selectedModelId
+                    Surface(color = Color(0xFF17171C), shape = RoundedCornerShape(13.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) AiViolet.copy(alpha = .55f) else Color.White.copy(alpha = .06f))) {
+                        Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(model.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(model.description, color = AiMuted, fontSize = 9.sp)
+                                Text(if (installed) "Downloaded on this device" else "Approx. " + (model.estimatedBytes / (1024L * 1024L)) + " MB download", color = AiMuted, fontSize = 9.sp)
+                            }
+                            val action = when { selected && state.ready -> "ACTIVE"; selected -> "SELECTED"; installed -> "USE"; else -> "DOWNLOAD" }
+                            Text(action, color = AiViolet, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable(enabled = !state.downloading && !state.initializing && !state.sending && action != "ACTIVE" && action != "SELECTED") {
+                                if (installed) aiViewModel.selectModel(model.id) else aiViewModel.downloadModel(model.id)
+                            }.padding(7.dp))
+                        }
+                    }
+                }
+                Text("Models run locally. Downloaded models stay on your device.", color = AiMuted, fontSize = 9.sp)
+            }
+        }
         if (state.downloading) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text("Installing Ryko AI model · " + (state.downloadProgress * 100).toInt() + "%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text("Downloading " + (RykoAiModelDownloader.models.firstOrNull { it.id == state.downloadingModelId }?.name ?: "Ryko AI model") + " · " + (state.downloadProgress * 100).toInt() + "%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 LinearProgressIndicator(progress = { state.downloadProgress }, modifier = Modifier.fillMaxWidth(), color = AiViolet, trackColor = Color(0xFF302D3A))
-                Text("About 614 MB. This is a one-time download; it stays on this device.", color = AiMuted, fontSize = 10.sp)
+                Text("This is a one-time download; the model stays on this device.", color = AiMuted, fontSize = 10.sp)
             }
         } else if (state.initializing) {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
