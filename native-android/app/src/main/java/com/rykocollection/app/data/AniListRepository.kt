@@ -322,9 +322,9 @@ class AniListRepository {
     ): List<AniListMedia> {
         val originFilter = if (manga && manhwa) ", countryOfOrigin: KR" else ""
         val query = """
-            query(${ '$' }search: String!, ${ '$' }type: MediaType!, ${ '$' }page: Int!) {
-              Page(page: ${ '$' }page, perPage: 30) {
-                media(search: ${ '$' }search, type: ${ '$' }type, sort: SEARCH_MATCH, isAdult: false$originFilter) {
+            query(${'$'}search: String!, ${'$'}type: MediaType!, ${'$'}page: Int!) {
+              Page(page: ${'$'}page, perPage: 30) {
+                media(search: ${'$'}search, type: ${'$'}type, sort: SEARCH_MATCH, isAdult: false$originFilter) {
                   id title { english romaji native }
                   coverImage { large extraLarge }
                   averageScore format seasonYear status genres chapters volumes countryOfOrigin
