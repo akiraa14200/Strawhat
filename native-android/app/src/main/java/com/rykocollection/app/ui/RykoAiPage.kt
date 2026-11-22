@@ -142,7 +142,7 @@ internal fun RykoAiPage(
                                 val externalMatches = secondary.searchMedia(route.query, requestedMangaMode, requestedManhwa)
                                 if (externalMatches.isNotEmpty()) {
                                     aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
-                                } else if (route.intent == RykoAiIntent.ENTITY_LOOKUP) {
+                                } else if (route.intent == RykoAiIntent.ENTITY_LOOKUP || route.intent == RykoAiIntent.DETAILS) {
                                     aiViewModel.addCharacterResults(prompt, repository.searchCharacters(route.query))
                                 } else {
                                     aiViewModel.addCatalogueResults(prompt, emptyList(), requestedMangaMode)
