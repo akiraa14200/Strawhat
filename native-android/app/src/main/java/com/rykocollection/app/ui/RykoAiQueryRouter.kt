@@ -69,7 +69,7 @@ internal object RykoAiQueryRouter {
         // "the", "is", "it", "has" and "been" may be part of a real title.
         val query = text
             .replace(Regex("(?i)^\\s*(?:please\\s+)?(?:tell me|give me|show me|find|search for|search|look up)\\s+"), "")
-            .replace(Regex("(?i)^\\s*(?:what is|what's|who is|who's|details of|information about|about|the plot of|the story of)\\s+"), "")
+            .replace(Regex("(?i)^\\s*(?:what is|what's|who is|who's|complete details about|details about|details of|information about|about|the plot of|the story of)\\s+"), "")
             .replace(Regex("[?!.:,;]+$"), "")
             .replace(
                 Regex("(?i)(?:\\s+(?:anime|manga|manhwa|manhua|webtoon|details?|story|plot|synopsis|summary|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?))+$"),
