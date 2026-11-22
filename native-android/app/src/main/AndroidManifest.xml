@@ -7,7 +7,7 @@
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity
-            android:name=".StreamGurdActivity"
+            android:name=".safeguard.SafeguardActivity"
             android:exported="false"
             android:hardwareAccelerated="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
