@@ -308,6 +308,13 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    fun addNewsUnavailable(prompt: String) {
+        _state.value = _state.value.copy(
+            messages = _state.value.messages + RykoAiMessage(prompt, true) +
+                RykoAiMessage("I don't have a verified live-news result for that request yet, so I won't invent a headline. Open Ryko Newsroom for current stories from their original publishers.", false)
+        )
+    }
+
     fun reportCatalogueError() {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage("AniList search needs an internet connection. The on-device chat can still work offline.", false)
