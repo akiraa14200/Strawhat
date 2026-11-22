@@ -56,11 +56,12 @@ internal object RykoAiQueryRouter {
         val theory = Regex("\\b(theory|meaning|symbolism|foreshadow|mystery|why did|why does|what does .* mean|explain the scene)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
         val character = Regex("\\b(who is|who's|character|characters|powers of|abilities of|belongs to|from which (anime|manga|series))\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
         val recommendation = Regex("\\b(recommend|recommendations|suggest|suggestions|similar to|like (this|it)|top\\s*\\d+|best|underrated|must read|must watch)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
-        val details = Regex("\\b(details?|story|plot|synopsis|summary|about|information|volumes?|status|author|artist|release date|published|completed|ending|adaptation)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        val details = Regex("\\b(details?|story|plot|synopsis|summary|information|volumes?|status|author|artist|release date|published|completed|ending|adaptation)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
 
-        val looksLikeStandaloneEntity = text.matches(
+        val candidateTitle = cleanCatalogueQuery(text)
+        val looksLikeStandaloneEntity = candidateTitle.matches(
             Regex("^[A-Z][\\p{L}’'-]+(?:\\s+[A-Z][\\p{L}’'-]+){1,5}$")
-        ) && normalized.split(Regex("\\s+")).firstOrNull() !in setOf("i", "the", "what", "who", "why", "how")
+        ) && candidateTitle.split(Regex("\\s+")).firstOrNull()?.lowercase() !in setOf("i", "the", "what", "who", "why", "how")
 
         val intent = when {
             news -> RykoAiIntent.NEWS
