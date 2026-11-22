@@ -85,11 +85,29 @@ internal fun RykoAiPage(
     val state by aiViewModel.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
     var catalogueLoading by remember { mutableStateOf(false) }
+    val processedRecommendationReplies = remember { mutableSetOf<String>() }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(Unit) { aiViewModel.ensureReady() }
+    LaunchedEffect(state.sending, state.messages.size) {
+        if (!state.sending) {
+            val reply = state.messages.lastOrNull()?.takeIf { !it.fromUser && it.text.isNotBlank() }?.text.orEmpty()
+            if (reply.isNotBlank() && processedRecommendationReplies.add(reply)) {
+                val titles = Regex("\\\"([^\\\"\\n]{2,80})\\\"").findAll(reply).map { it.groupValues[1].trim() }.distinct().take(5).toList()
+                if (titles.isNotEmpty()) {
+                    val repository = AniListRepository()
+                    try {
+                        val matches = titles.flatMap { repository.searchMedia(it, mangaMode).take(1) }.distinctBy { it.id }
+                        if (matches.isNotEmpty()) aiViewModel.attachCatalogueResults(matches)
+                    } catch (_: Exception) {
+                        // Keep the local chat available when AniList cannot be reached.
+                    } finally { repository.close() }
+                }
+            }
+        }
+    }
     fun sendPrompt() {
         val prompt = input.trim()
         if (prompt.isEmpty() || !state.ready || state.sending) return
@@ -151,7 +169,7 @@ internal fun RykoAiPage(
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = if (message.fromUser) Alignment.End else Alignment.Start) {
                     if (message.text.isNotBlank()) {
                         Surface(shape = RoundedCornerShape(18.dp), color = if (message.fromUser) Color(0xFF302A48) else Color(0xFF17171C)) {
-                            Text(message.text, color = Color(0xFFF4F2FA), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(14.dp))
+                            Text(message.text.replace("**", "").replace("*", ""), color = Color(0xFFF4F2FA), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(14.dp))
                         }
                     }
                     message.results.forEach { media ->
