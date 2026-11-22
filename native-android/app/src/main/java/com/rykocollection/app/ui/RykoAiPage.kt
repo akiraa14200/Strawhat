@@ -116,42 +116,79 @@ internal fun RykoAiPage(
         keyboard?.hide()
         val normalized = prompt.lowercase()
         val requestedManga = Regex("\\b(manga|manhwa|manhua|webtoon)\\b").containsMatchIn(normalized)
-        val requestedAnime = Regex("\\b(anime)\\b").containsMatchIn(normalized)
+        val requestedManhwa = Regex("\\b(manhwa|webtoon)\\b").containsMatchIn(normalized)
+        val requestedAnime = Regex("\\banime\\b").containsMatchIn(normalized)
         val requestedMangaMode = when {
             requestedManga -> true
             requestedAnime -> false
             else -> mangaMode
         }
-        val hasMediaType = requestedManga || requestedAnime
-        val recommendationIntent = Regex("\\b(recommend|recommendation|top\\s*\\d+|best|suggest|suggestion|list|recommend me|give me)\\b").containsMatchIn(normalized) ||
-            (hasMediaType && Regex("\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports|popular|good|best)\\b").containsMatchIn(normalized))
-        if (!recommendationIntent || !hasMediaType) {
-            aiViewModel.send(prompt)
-            return
-        }
+        val detailsIntent = Regex("\\b(details?|story|plot|synopsis|summary|about|info|information|chapters?|volumes?|status|author|artist)\\b").containsMatchIn(normalized)
+        val correctionIntent = Regex("\\b(maybe|meant|actually|rather|instead|correction)\\b").containsMatchIn(normalized) &&
+            (requestedManga || requestedAnime)
+        val recommendationIntent = Regex("\\b(recommend|recommendation|top\\s*\\d+|best|suggest|suggestion|list|popular|good|give me|show me)\\b").containsMatchIn(normalized) ||
+            ((requestedManga || requestedAnime) && !detailsIntent) || correctionIntent
+        val titleTerm = prompt
+            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|details?|story|plot|synopsis|summary|about|info|information|chapters?|volumes?|status|author|artist|please|tell me|what is|give me|show me|best|top|popular|recommendations?|list)\\b"), " ")
+            .replace(Regex("(?i)\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports)\\b"), " ")
+            .replace(Regex("[^a-zA-Z0-9가-힣一-龯ぁ-んァ-ン ]"), " ")
+            .trim()
         val genre = listOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
             .firstOrNull { normalized.contains(it.lowercase()) }
-        val requestedLabel = when {
-            normalized.contains("manhwa") -> "manhwa"
-            normalized.contains("manhua") -> "manhua"
-            normalized.contains("webtoon") -> "webtoon"
-            requestedManga -> "manga"
-            else -> "anime"
-        }
-        catalogueLoading = true
-        scope.launch {
-            val repository = AniListRepository()
-            try {
-                val results = repository.recommendMedia(manga = requestedMangaMode, genre = genre, limit = 5)
-                aiViewModel.addRecommendationResults(prompt, results, requestedMangaMode, genre, requestedLabel)
-            } catch (_: Exception) {
-                aiViewModel.addCatalogueResults(prompt, emptyList())
-                aiViewModel.reportCatalogueError()
-            } finally {
-                repository.close()
-                catalogueLoading = false
+
+        if (detailsIntent && titleTerm.isNotBlank()) {
+            catalogueLoading = true
+            scope.launch {
+                val repository = AniListRepository()
+                try {
+                    var matches = repository.searchMedia(titleTerm, requestedMangaMode, requestedManhwa)
+                    if (matches.isEmpty() && !requestedManga && !requestedAnime) {
+                        matches = repository.searchMedia(titleTerm, !mangaMode, false)
+                    }
+                    val match = matches.firstOrNull()
+                    val detail = match?.let { repository.getMedia(it.id) }
+                    if (match != null && detail != null) aiViewModel.addMediaDetails(prompt, match, detail)
+                    else aiViewModel.addCatalogueResults(prompt, matches.take(5))
+                } catch (_: Exception) {
+                    aiViewModel.reportCatalogueError()
+                } finally {
+                    repository.close()
+                    catalogueLoading = false
+                }
             }
+            return
         }
+
+        if (recommendationIntent && (requestedManga || requestedAnime || correctionIntent)) {
+            val requestedLabel = when {
+                requestedManhwa -> "manhwa"
+                normalized.contains("manhua") -> "manhua"
+                normalized.contains("webtoon") -> "webtoon"
+                requestedManga -> "manga"
+                else -> "anime"
+            }
+            catalogueLoading = true
+            scope.launch {
+                val repository = AniListRepository()
+                try {
+                    val results = repository.recommendMedia(
+                        manga = requestedMangaMode,
+                        genre = genre,
+                        limit = 5,
+                        manhwa = requestedManhwa
+                    )
+                    aiViewModel.addRecommendationResults(prompt, results, requestedMangaMode, genre, requestedLabel)
+                } catch (_: Exception) {
+                    aiViewModel.addCatalogueResults(prompt, emptyList())
+                    aiViewModel.reportCatalogueError()
+                } finally {
+                    repository.close()
+                    catalogueLoading = false
+                }
+            }
+            return
+        }
+        aiViewModel.send(prompt)
     }
 
     fun searchCatalogue() {
@@ -163,13 +200,17 @@ internal fun RykoAiPage(
             Regex("\\banime\\b").containsMatchIn(normalized) -> false
             else -> mangaMode
         }
-        val searchTerm = prompt.replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon)\\b"), "").trim().ifBlank { prompt }
+        val searchManhwa = Regex("\\b(manhwa|webtoon)\\b").containsMatchIn(normalized)
+        val searchTerm = prompt
+            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|search|find|please|title|titles)\\b"), " ")
+            .trim()
+            .ifBlank { prompt }
         catalogueLoading = true
         keyboard?.hide()
         scope.launch {
             val repository = AniListRepository()
             try {
-                aiViewModel.addCatalogueResults(prompt, repository.searchMedia(searchTerm, searchManga).take(6))
+                aiViewModel.addCatalogueResults(prompt, repository.searchMedia(searchTerm, searchManga, searchManhwa).take(6))
             } catch (_: Exception) {
                 aiViewModel.reportCatalogueError()
             } finally {
