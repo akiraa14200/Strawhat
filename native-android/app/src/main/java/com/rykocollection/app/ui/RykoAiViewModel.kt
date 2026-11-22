@@ -204,7 +204,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                 // and repeated String/list allocations on slower phones.
                 val response = StringBuilder()
                 var lastPublishedAt = 0L
-                activeConversation.sendMessageAsync(prompt).collect { chunk ->
+                activeConversation.sendMessageAsync(RykoAiTrainingPack.guidedPrompt(prompt)).collect { chunk ->
                     response.append(chunk.toString())
                     val now = android.os.SystemClock.elapsedRealtime()
                     if (now - lastPublishedAt >= 50L) {
