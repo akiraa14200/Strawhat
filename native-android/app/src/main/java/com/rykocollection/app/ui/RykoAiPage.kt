@@ -35,7 +35,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,10 +88,6 @@ internal fun RykoAiPage(
     val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(Unit) { aiViewModel.ensureReady() }
-    DisposableEffect(Unit) {
-        onDispose { aiViewModel.releaseModel() }
-    }
-
     fun sendPrompt() {
         val prompt = input.trim()
         if (prompt.isEmpty() || !state.ready || state.sending) return
@@ -187,7 +182,8 @@ internal fun RykoAiPage(
 
         state.error?.let { error ->
             Text(error, color = Color(0xFFFFB7B7), fontSize = 11.sp, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp))
-            Text("Tap the chat again to retry setup if the model did not finish installing.", color = AiMuted, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 14.dp))
+            Text("Retry model setup", color = AiViolet, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp).clickable { aiViewModel.ensureReady() })
         }
 
         Row(Modifier.fillMaxWidth().background(Color(0xFF101014)).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
