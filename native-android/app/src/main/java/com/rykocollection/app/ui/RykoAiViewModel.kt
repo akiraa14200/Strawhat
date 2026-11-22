@@ -68,14 +68,34 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                 engineScope.launch {
                     try {
                         if (engine == null) {
-                            val candidate = Engine(
-                                EngineConfig(
-                                    modelPath = modelFile.absolutePath,
-                                    backend = Backend.CPU(),
-                                    cacheDir = getApplication<Application>().cacheDir.absolutePath
+                            val cachePath = getApplication<Application>().cacheDir.absolutePath
+                            // Prefer the on-device GPU delegate when LiteRT-LM can initialize it.
+                            // Some phones/drivers do not support this model on GPU, so retain a
+                            // transparent CPU fallback rather than making Ryko AI unavailable.
+                            val candidate = try {
+                                val gpuEngine = Engine(
+                                    EngineConfig(
+                                        modelPath = modelFile.absolutePath,
+                                        backend = Backend.GPU(),
+                                        cacheDir = cachePath
+                                    )
                                 )
-                            )
-                            candidate.initialize()
+                                try {
+                                    gpuEngine.initialize()
+                                    gpuEngine
+                                } catch (gpuError: Exception) {
+                                    runCatching { gpuEngine.close() }
+                                    throw gpuError
+                                }
+                            } catch (_: Exception) {
+                                Engine(
+                                    EngineConfig(
+                                        modelPath = modelFile.absolutePath,
+                                        backend = Backend.CPU(),
+                                        cacheDir = cachePath
+                                    )
+                                ).also { it.initialize() }
+                            }
                             engine = candidate
                             conversation = candidate.createConversation(
                                 ConversationConfig(
