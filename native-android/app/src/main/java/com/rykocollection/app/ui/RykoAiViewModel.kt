@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -115,19 +116,35 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         engineScope.launch {
             try {
                 val activeConversation = checkNotNull(conversation) { "The model is not ready." }
+                // Accumulate tokens off the UI state and publish at a capped cadence.
+                // Updating StateFlow for every tiny token causes excessive Compose recomposition
+                // and repeated String/list allocations on slower phones.
+                val response = StringBuilder()
+                var lastPublishedAt = 0L
                 activeConversation.sendMessageAsync(prompt).collect { chunk ->
-                    val current = _state.value.messages
-                    if (current.isNotEmpty()) {
-                        _state.value = _state.value.copy(
-                            messages = current.dropLast(1) + current.last().copy(text = current.last().text + chunk.toString())
-                        )
+                    response.append(chunk.toString())
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if (now - lastPublishedAt >= 50L) {
+                        publishStreamingResponse(response.toString())
+                        lastPublishedAt = now
                     }
                 }
+                // Always publish the final tail, including short answers that never hit 50 ms. 
+                publishStreamingResponse(response.toString())
             } catch (error: Exception) {
                 _state.value = _state.value.copy(error = error.message ?: "The model could not answer.")
             } finally {
                 _state.value = _state.value.copy(sending = false)
             }
+        }
+    }
+
+    private fun publishStreamingResponse(text: String) {
+        val current = _state.value.messages
+        if (current.isNotEmpty()) {
+            _state.value = _state.value.copy(
+                messages = current.dropLast(1) + current.last().copy(text = text)
+            )
         }
     }
 
