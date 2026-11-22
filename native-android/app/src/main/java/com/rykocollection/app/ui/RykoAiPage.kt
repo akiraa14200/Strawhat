@@ -189,14 +189,12 @@ internal fun RykoAiPage(
                 return
             }
             RykoAiIntent.NEWS -> aiViewModel.addNewsUnavailable(prompt)
-            in setOf(
-                RykoAiIntent.CHAPTER_LOOKUP,
-                RykoAiIntent.POWER_SCALING,
-                RykoAiIntent.COMPARISON,
-                RykoAiIntent.THEORY,
-                RykoAiIntent.SOCIAL_DISCUSSION,
-                RykoAiIntent.GENERAL
-            ) -> Unit
+            RykoAiIntent.CHAPTER_LOOKUP,
+            RykoAiIntent.POWER_SCALING,
+            RykoAiIntent.COMPARISON,
+            RykoAiIntent.THEORY,
+            RykoAiIntent.SOCIAL_DISCUSSION,
+            RykoAiIntent.GENERAL -> Unit
         }
         aiViewModel.send(prompt)
     }
