@@ -293,7 +293,7 @@ private fun SafeguardPage(onExit: () -> Unit) {
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(if (protectionEnabled) "Protection is active" else "Protection is paused", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                Text("Balanced protection · Ask on uncertain redirects", color = Color(0xFFBDBDC2), fontSize = 11.sp)
+                                Text("Balanced protection · Cross-host redirects blocked", color = Color(0xFFBDBDC2), fontSize = 11.sp)
                             }
                             Switch(
                                 checked = protectionEnabled,
@@ -417,11 +417,14 @@ private fun SafeguardPage(onExit: () -> Unit) {
                                                         address = url
                                                         return
                                                     }
-                                                    view?.stopLoading()
-                                                    addEvent(incomingHost, "Blocked: automatic redirect changed host from $expectedHost")
-                                                    return
+                                                    if (enabledState && !trustedState.any { NavigationPolicy.isWithinTrustedDomain(incomingHost, it) }) {
+                                                        view?.stopLoading()
+                                                        addEvent(incomingHost, "Blocked: automatic redirect changed host from $expectedHost")
+                                                        return
+                                                    }
                                                 }
-                                                if (committedHost.isNotBlank() && !NavigationPolicy.isSameSite(incomingHost, committedHost)) {
+                                                if (enabledState && committedHost.isNotBlank() && !NavigationPolicy.isSameSite(incomingHost, committedHost) &&
+                                                    !trustedState.any { NavigationPolicy.isWithinTrustedDomain(incomingHost, it) }) {
                                                     view?.stopLoading()
                                                     addEvent(incomingHost, "Blocked: automatic redirect changed host from $committedHost")
                                                     return
