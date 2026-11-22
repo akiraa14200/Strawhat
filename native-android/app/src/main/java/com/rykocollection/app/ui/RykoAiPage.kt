@@ -121,7 +121,7 @@ internal fun RykoAiPage(
                 }
                 return
             }
-            RykoAiIntent.DETAILS, RykoAiIntent.TITLE_SEARCH -> {
+            RykoAiIntent.DETAILS, RykoAiIntent.TITLE_SEARCH, RykoAiIntent.ENTITY_LOOKUP -> {
                 if (route.query.isBlank()) {
                     aiViewModel.send(prompt)
                     return
@@ -140,7 +140,13 @@ internal fun RykoAiPage(
                             val secondary = com.rykocollection.app.data.JikanRepository()
                             try {
                                 val externalMatches = secondary.searchMedia(route.query, requestedMangaMode, requestedManhwa)
-                                aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
+                                if (externalMatches.isNotEmpty()) {
+                                    aiViewModel.addCatalogueResults(prompt, externalMatches.take(5), requestedMangaMode)
+                                } else if (route.intent == RykoAiIntent.ENTITY_LOOKUP) {
+                                    aiViewModel.addCharacterResults(prompt, repository.searchCharacters(route.query))
+                                } else {
+                                    aiViewModel.addCatalogueResults(prompt, emptyList(), requestedMangaMode)
+                                }
                             } finally { secondary.close() }
                         }
                     } catch (_: Exception) {
