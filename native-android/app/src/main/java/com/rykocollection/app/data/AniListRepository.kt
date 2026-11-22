@@ -239,7 +239,7 @@ class AniListRepository {
     suspend fun recommendMedia(manga: Boolean = false, genre: String? = null, limit: Int = 5): List<AniListMedia> {
         val allowedGenres = setOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
         val safeGenre = genre?.takeIf { it in allowedGenres }
-        val genreFilter = safeGenre?.let { ", genre_in: [\\"$it\\"]" } ?: ""
+        val genreFilter = safeGenre?.let { ", genre_in: [\\\"$it\\\"]" } ?: ""
         val mediaType = if (manga) "MANGA" else "ANIME"
         val safeLimit = limit.coerceIn(1, 10)
         val query = """
