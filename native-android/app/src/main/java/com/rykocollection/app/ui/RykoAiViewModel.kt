@@ -42,7 +42,7 @@ internal data class RykoAiUiState(
     val ready: Boolean = false,
     val sending: Boolean = false,
     val error: String? = null,
-    val selectedModelId: String = "qwen3-0.6b-int4",
+    val selectedModelId: String = "qwen3.5-4b-mixed-int4",
     val installedModelIds: Set<String> = emptySet(),
     val downloadingModelId: String? = null
 )
@@ -63,8 +63,11 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         val prefs = getApplication<Application>().getSharedPreferences("ryko_ai", 0)
-        val saved = prefs.getString("selected_model_id", "qwen3-0.6b-int4") ?: "qwen3-0.6b-int4"
-        val selected = RykoAiModelDownloader.models.firstOrNull { it.id == saved }?.id ?: "qwen3-0.6b-int4"
+        val saved = prefs.getString("selected_model_id", "qwen3.5-4b-mixed-int4") ?: "qwen3.5-4b-mixed-int4"
+        // Upgrade users who were still on the old default; explicit model choices remain intact.
+        val migrated = if (saved == "qwen3-0.6b-int4") "qwen3.5-4b-mixed-int4" else saved
+        val selected = RykoAiModelDownloader.models.firstOrNull { it.id == migrated }?.id ?: "qwen3.5-4b-mixed-int4"
+        if (selected != saved) prefs.edit().putString("selected_model_id", selected).apply()
         _state.value = _state.value.copy(selectedModelId = selected, installedModelIds = RykoAiModelDownloader.models.filter { RykoAiModelDownloader.hasModelFile(getApplication(), it.id) }.map { it.id }.toSet())
     }
 
@@ -89,10 +92,19 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                             runCatching { engine?.close() }
                             engine = null
                             val cachePath = getApplication<Application>().cacheDir.absolutePath
-                            // Prefer the on-device GPU delegate when LiteRT-LM can initialize it.
-                            // Some phones/drivers do not support this model on GPU, so retain a
-                            // transparent CPU fallback rather than making Ryko AI unavailable.
-                            val candidate = try {
+                            val modelSpec = RykoAiModelDownloader.models.first { it.id == modelId }
+                            // Qwen3.5 4B Mixed INT4 is intentionally CPU-only on 8 GB phones:
+                            // its GPU path can exceed the available memory budget. Smaller models
+                            // still try GPU first and safely fall back to CPU.
+                            val candidate = if (!modelSpec.useGpu) {
+                                Engine(
+                                    EngineConfig(
+                                        modelPath = modelFile.absolutePath,
+                                        backend = Backend.CPU(),
+                                        cacheDir = cachePath
+                                    )
+                                ).also { it.initialize() }
+                            } else try {
                                 val gpuEngine = Engine(
                                     EngineConfig(
                                         modelPath = modelFile.absolutePath,
@@ -121,11 +133,14 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                             conversation = candidate.createConversation(
                                 ConversationConfig(
                                     systemInstruction = Contents.of(
-                                        "You are Ryko AI, a friendly anime and manga companion inside RykoCollection. " +
-                                            "Answer clearly and naturally. Help with anime, manga, manhwa, manhua, genres, " +
-                                            "story explanations, and recommendations. Never invent catalogue facts or claim " +
-                                            "a title has a verified AniList page unless the app provides that result. " +
-                                            "If unsure, say so. Match the user's language and keep answers concise unless asked for detail."
+                                        "You are Ryko AI, the specialist anime, manga, manhwa and manhua assistant inside RykoCollection. " +
+                                            "First understand exactly what the user is asking; do not answer a different or merely related question. " +
+                                            "Preserve exact title names, character names, spelling, dates and requested constraints. " +
+                                            "If a request has multiple parts, answer every part in order. If the question is ambiguous, ask one short clarification instead of guessing. " +
+                                            "Separate verified facts from interpretation and clearly say when a fact cannot be verified. " +
+                                            "Never invent chapters, release dates, character relationships, plot events, scores or catalogue links. " +
+                                            "For recommendations, explain briefly why each pick matches the user's stated preferences. " +
+                                            "Match the user's language (including natural Hinglish when used), give useful detail, and avoid generic filler."
                                     )
                                 )
                             )
