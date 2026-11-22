@@ -254,6 +254,26 @@ class AniListRepository {
         return request(query, variables).data?.Page?.media.orEmpty()
     }
 
+    suspend fun recommendMedia(manga: Boolean = false, genre: String? = null, limit: Int = 5): List<AniListMedia> {
+        val allowedGenres = setOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
+        val safeGenre = genre?.takeIf { it in allowedGenres }
+        val genreFilter = safeGenre?.let { ", genre_in: [\\"$it\\"]" } ?: ""
+        val mediaType = if (manga) "MANGA" else "ANIME"
+        val safeLimit = limit.coerceIn(1, 10)
+        val query = """
+            query {
+              Page(page: 1, perPage: $safeLimit) {
+                media(type: $mediaType, sort: POPULARITY_DESC, isAdult: false$genreFilter) {
+                  id title { english romaji native }
+                  coverImage { large extraLarge }
+                  averageScore format seasonYear genres
+                }
+              }
+            }
+        """.trimIndent()
+        return request(query, buildJsonObject {}).data?.Page?.media.orEmpty()
+    }
+
     suspend fun latestAiringEpisodes(): List<AniListAiring> {
         val query = """
             query {
@@ -541,155 +561,6 @@ class AniListRepository {
     fun close() = client.close()
 }
 }type, sort: POPULARITY_DESC, isAdult: false${genreFilter}) {
-                  id title { english romaji native }
-                  coverImage { large extraLarge }
-                  averageScore format seasonYear genres
-                }
-              }
-            }
-        """.trimIndent()
-        val variables = buildJsonObject { put("type", if (manga) "MANGA" else "ANIME") }
-        return request(query, variables).data?.Page?.media.orEmpty()
-    }
-
-    suspend fun latestAiringEpisodes(): List<AniListAiring> {
-        val query = """
-            query {
-              Page(page: 1, perPage: 12) {
-                airingSchedules(notYetAired: false, sort: TIME_DESC) {
-                  airingAt
-                  episode
-                  media {
-                    id title { english romaji native }
-                    coverImage { large extraLarge }
-                    format seasonYear
-                  }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Page?.airingSchedules.orEmpty()
-    }
-
-    suspend fun recentlyUpdatedManga(): List<AniListMedia> {
-        val query = """
-            query {
-              Page(page: 1, perPage: 12) {
-                media(type: MANGA, sort: UPDATED_AT_DESC, isAdult: false) {
-                  id title { english romaji native }
-                  coverImage { large extraLarge }
-                  format chapters status
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Page?.media.orEmpty()
-    }
-
-    suspend fun popularVideoTrailers(): List<AniListMedia> {
-        val query = """
-            query {
-              Page(page: 1, perPage: 30) {
-                media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
-                  id title { english romaji native }
-                  coverImage { large extraLarge }
-                  trailer { id site thumbnail }
-                  averageScore
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Page?.media.orEmpty()
-            .filter {
-                !it.trailer?.id.isNullOrBlank() &&
-                    it.trailer?.site.equals("youtube", ignoreCase = true)
-            }
-    }
-
-    suspend fun searchMedia(term: String, manga: Boolean = false): List<AniListMedia> {
-        val query = """
-            query(${'$'}search: String!, ${'$'}type: MediaType!, ${'$'}page: Int!) {
-              Page(page: ${'$'}page, perPage: 30) {
-                media(search: ${'$'}search, type: ${'$'}type, sort: SEARCH_MATCH, isAdult: false) {
-                  id title { english romaji native }
-                  coverImage { large extraLarge }
-                  averageScore format seasonYear status genres
-                  trailer { id site thumbnail }
-                }
-              }
-            }
-        """.trimIndent()
-        val variables = buildJsonObject {
-            put("search", term.trim())
-            put("type", if (manga) "MANGA" else "ANIME")
-            put("page", 1)
-        }
-        return request(query, variables).data?.Page?.media.orEmpty()
-    }
-
-    suspend fun getMedia(id: Int): AniListDetail? {
-        val query = """
-            query {
-              Media(id: $id) {
-                id title { english romaji native } coverImage { large extraLarge } bannerImage
-                averageScore popularity favourites format season seasonYear status genres
-                startDate { year month day } endDate { year month day }
-                episodes chapters volumes duration description(asHtml: false)
-                countryOfOrigin source synonyms trailer { id site thumbnail }
-                studios(isMain: true) { nodes { name } }
-                staff(page: 1, perPage: 30, sort: RELEVANCE) { edges { role node { name { full } } } }
-                externalLinks { site url type }
-                nextAiringEpisode { airingAt timeUntilAiring episode }
-                characters(page: 1, perPage: 18, sort: ROLE) {
-                  edges { role node {
-                    id name { full } image { large medium } description(asHtml: false)
-                    gender age dateOfBirth { year month day } favourites siteUrl
-                  } }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Media
-    }
-
-    suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
-        val query = """
-            query {
-              Media(id: $id) {
-                characters(page: $page, perPage: 18, sort: ROLE) {
-                  edges { role node {
-                    id name { full } image { large medium } description(asHtml: false)
-                    gender age dateOfBirth { year month day } favourites siteUrl
-                  } }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Media?.characters?.edges.orEmpty()
-    }
-
-    private suspend fun request(
-        query: String,
-        variables: JsonObject
-    ): AniListEnvelope {
-        val result: AniListEnvelope = client.post("https://graphql.anilist.co") {
-            contentType(ContentType.Application.Json)
-            setBody(AniListGraphQLRequest(query, variables))
-        }.body()
-
-        if (result.errors.isNotEmpty() && result.data == null) {
-            throw IllegalStateException(
-                result.errors.joinToString(" · ") { it.message }
-            )
-        }
-        return result
-    }
-
-    fun close() = client.close()
-}
-}type: MediaType!) {
-              Page(page: 1, perPage: ${limit}) {
-                media(type: $type, sort: POPULARITY_DESC, isAdult: false${genreFilter}) {
                   id title { english romaji native }
                   coverImage { large extraLarge }
                   averageScore format seasonYear genres
