@@ -125,6 +125,9 @@ private fun SafeguardPage(onExit: () -> Unit) {
     var protectionEnabled by remember { mutableStateOf(prefs.getBoolean("enabled", true)) }
     var address by remember { mutableStateOf("") }
     var currentUrl by remember { mutableStateOf("") }
+    var expectedNavigationHost by remember { mutableStateOf("") }
+    var committedHost by remember { mutableStateOf("") }
+    var allowOnceUrl by remember { mutableStateOf("") }
     var browserVisible by remember { mutableStateOf(false) }
     var webView by remember { mutableStateOf<WebView?>(null) }
     var pendingNavigation by remember { mutableStateOf<PendingNavigation?>(null) }
@@ -175,7 +178,7 @@ private fun SafeguardPage(onExit: () -> Unit) {
             return
         }
         address = normalized
-        currentUrl = normalized
+        expectedNavigationHost = NavigationPolicy.hostOf(normalized)
         browserVisible = true
         webView?.loadUrl(normalized)
     }
@@ -371,9 +374,14 @@ private fun SafeguardPage(onExit: () -> Unit) {
                                                 val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return true
                                                 if (scheme !in setOf("http", "https")) return true
                                                 if (!request.isForMainFrame) return false
-                                                val decision = NavigationPolicy.decide(uri.toString(), currentUrlState, request.hasGesture(), trustedState, enabledState)
+                                                if (uri.toString() == allowOnceUrl) {
+                                                    allowOnceUrl = ""
+                                                    expectedNavigationHost = NavigationPolicy.hostOf(uri.toString())
+                                                    return false
+                                                }
+                                                val decision = NavigationPolicy.decide(uri.toString(), currentUrlState, request.hasGesture() && !request.isRedirect, trustedState, enabledState)
                                                 when (decision.action) {
-                                                    NavigationAction.ALLOW -> return false
+                                                    NavigationAction.ALLOW -> { expectedNavigationHost = decision.host; return false }
                                                     NavigationAction.BLOCK -> {
                                                         addEvent(decision.host, "Blocked: ${decision.reason}")
                                                         return true
@@ -391,17 +399,40 @@ private fun SafeguardPage(onExit: () -> Unit) {
                                                 val safeUrl = NavigationPolicy.normalize(url.orEmpty()) ?: return true
                                                 val decision = NavigationPolicy.decide(safeUrl, currentUrlState, false, trustedState, enabledState)
                                                 when (decision.action) {
-                                                    NavigationAction.ALLOW -> return false
+                                                    NavigationAction.ALLOW -> { expectedNavigationHost = decision.host; return false }
                                                     NavigationAction.BLOCK -> { addEvent(decision.host, "Blocked: ${decision.reason}"); return true }
                                                     NavigationAction.ASK -> { pendingNavigation = PendingNavigation(safeUrl, decision.host, decision.reason); addEvent(decision.host, "Confirmation required"); return true }
                                                 }
                                             }
 
                                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                                if (!url.isNullOrBlank()) {
+                                                if (url.isNullOrBlank()) return
+                                                val incomingHost = NavigationPolicy.hostOf(url)
+                                                val expectedHost = expectedNavigationHost
+                                                if (expectedHost.isNotBlank() && NavigationPolicy.isSameSite(incomingHost, expectedHost)) {
+                                                    expectedNavigationHost = ""
+                                                    committedHost = incomingHost
                                                     currentUrl = url
                                                     address = url
+                                                    return
                                                 }
+                                                if (committedHost.isNotBlank() && !NavigationPolicy.isSameSite(incomingHost, committedHost)) {
+                                                    val decision = NavigationPolicy.decide(url, currentUrlState, false, trustedState, enabledState)
+                                                    if (decision.action != NavigationAction.ALLOW) {
+                                                        view?.stopLoading()
+                                                        if (decision.action == NavigationAction.ASK) {
+                                                            pendingNavigation = PendingNavigation(url, decision.host, decision.reason)
+                                                            addEvent(decision.host, "Confirmation required")
+                                                        } else {
+                                                            addEvent(decision.host, "Blocked: ${decision.reason}")
+                                                        }
+                                                        return
+                                                    }
+                                                }
+                                                expectedNavigationHost = ""
+                                                committedHost = incomingHost
+                                                currentUrl = url
+                                                address = url
                                             }
 
                                             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -528,6 +559,8 @@ private fun SafeguardPage(onExit: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     pendingNavigation = null
+                    allowOnceUrl = pending.url
+                    expectedNavigationHost = pending.host
                     webView?.loadUrl(pending.url)
                 }) { Text("Allow once") }
             },
@@ -537,6 +570,7 @@ private fun SafeguardPage(onExit: () -> Unit) {
                         trustedDomains.add(pending.host)
                         saveTrusted()
                         pendingNavigation = null
+                        expectedNavigationHost = pending.host
                         webView?.loadUrl(pending.url)
                     }) { Text("Trust site") }
                     TextButton(onClick = { pendingNavigation = null }) { Text("Block") }
