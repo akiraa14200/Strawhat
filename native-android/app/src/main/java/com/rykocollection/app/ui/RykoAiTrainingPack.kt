@@ -104,10 +104,10 @@ internal object RykoAiTrainingPack {
             .map { it.first }
         if (selected.isEmpty()) return ""
         return buildString {
-            append("SPECIALIST RESPONSE EXAMPLES (behaviour patterns; do not treat placeholders as facts):\\n")
+            append("SPECIALIST RESPONSE EXAMPLES (behaviour patterns; do not treat placeholders as facts):\n")
             selected.forEachIndexed { index, pattern ->
                 append(index + 1).append(") Fan question: ").append(pattern.question)
-                    .append("\\nResponse method: ").append(pattern.responseGuide).append('\\n')
+                    .append("\nResponse method: ").append(pattern.responseGuide).append('\n')
             }
             append("Apply the relevant method to the user's exact question. Verify factual details with retrieved sources; examples are not evidence.")
         }
@@ -115,6 +115,6 @@ internal object RykoAiTrainingPack {
 
     fun guidedPrompt(prompt: String): String {
         val context = contextFor(prompt)
-        return if (context.isBlank()) prompt else "$context\\n\\nUSER QUESTION: $prompt"
+        return if (context.isBlank()) prompt else "$context\n\nUSER QUESTION: $prompt"
     }
 }
