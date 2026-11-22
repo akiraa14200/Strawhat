@@ -370,9 +370,9 @@ class AniListRepository {
 
     suspend fun searchCharacters(term: String): List<AniListCharacter> {
         val query = """
-            query(${' {
+            query(${'$'}search: String!) {
               Page(page: 1, perPage: 5) {
-                characters(search: ${' SEARCH_MATCH) {
+                characters(search: ${'$'}search, sort: SEARCH_MATCH) {
                   id name { full } image { large medium }
                   description(asHtml: false) gender age siteUrl
                 }
@@ -382,149 +382,6 @@ class AniListRepository {
         val variables = buildJsonObject { put("search", term.trim()) }
         return request(query, variables).data?.Page?.characters.orEmpty()
     }
-
-    suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
-        val query = """
-            query {
-              Media(id: $id) {
-                characters(page: $page, perPage: 18, sort: ROLE) {
-                  edges { role node {
-                    id name { full } image { large medium } description(asHtml: false)
-                    gender age dateOfBirth { year month day } favourites siteUrl
-                  } }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Media?.characters?.edges.orEmpty()
-    }
-
-    private suspend fun request(
-        query: String,
-        variables: JsonObject
-    ): AniListEnvelope {
-        val result: AniListEnvelope = client.post("https://graphql.anilist.co") {
-            contentType(ContentType.Application.Json)
-            setBody(AniListGraphQLRequest(query, variables))
-        }.body()
-
-        if (result.errors.isNotEmpty() && result.data == null) {
-            throw IllegalStateException(
-                result.errors.joinToString(" · ") { it.message }
-            )
-        }
-        return result
-    }
-
-    fun close() = client.close()
-}
-}search: String!) {
-              Page(page: 1, perPage: 5) {
-                characters(search: $search, sort: SEARCH_MATCH) {
-                  id name { full } image { large medium }
-                  description(asHtml: false) gender age siteUrl
-                }
-              }
-            }
-        """.trimIndent()
-        val variables = buildJsonObject { put("search", term.trim()) }
-        return request(query, variables).data?.Page?.characters.orEmpty()
-    }
-
-    suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
-        val query = """
-            query {
-              Media(id: $id) {
-                characters(page: $page, perPage: 18, sort: ROLE) {
-                  edges { role node {
-                    id name { full } image { large medium } description(asHtml: false)
-                    gender age dateOfBirth { year month day } favourites siteUrl
-                  } }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Media?.characters?.edges.orEmpty()
-    }
-
-    private suspend fun request(
-        query: String,
-        variables: JsonObject
-    ): AniListEnvelope {
-        val result: AniListEnvelope = client.post("https://graphql.anilist.co") {
-            contentType(ContentType.Application.Json)
-            setBody(AniListGraphQLRequest(query, variables))
-        }.body()
-
-        if (result.errors.isNotEmpty() && result.data == null) {
-            throw IllegalStateException(
-                result.errors.joinToString(" · ") { it.message }
-            )
-        }
-        return result
-    }
-
-    fun close() = client.close()
-}
-}search, sort: SEARCH_MATCH) {
-                  id name { full } image { large medium }
-                  description(asHtml: false) gender age siteUrl
-                }
-              }
-            }
-        """.trimIndent()
-        val variables = buildJsonObject { put("search", term.trim()) }
-        return request(query, variables).data?.Page?.characters.orEmpty()
-    }
-
-    suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
-        val query = """
-            query {
-              Media(id: $id) {
-                characters(page: $page, perPage: 18, sort: ROLE) {
-                  edges { role node {
-                    id name { full } image { large medium } description(asHtml: false)
-                    gender age dateOfBirth { year month day } favourites siteUrl
-                  } }
-                }
-              }
-            }
-        """.trimIndent()
-        return request(query, buildJsonObject {}).data?.Media?.characters?.edges.orEmpty()
-    }
-
-    private suspend fun request(
-        query: String,
-        variables: JsonObject
-    ): AniListEnvelope {
-        val result: AniListEnvelope = client.post("https://graphql.anilist.co") {
-            contentType(ContentType.Application.Json)
-            setBody(AniListGraphQLRequest(query, variables))
-        }.body()
-
-        if (result.errors.isNotEmpty() && result.data == null) {
-            throw IllegalStateException(
-                result.errors.joinToString(" · ") { it.message }
-            )
-        }
-        return result
-    }
-
-    fun close() = client.close()
-}
-}search: String!) {
-              Page(page: 1, perPage: 5) {
-                characters(search: $search, sort: SEARCH_MATCH) {
-                  id name { full } image { large medium }
-                  description(asHtml: false) gender age siteUrl
-                }
-              }
-            }
-        """.trimIndent()
-        val variables = buildJsonObject { put("search", term.trim()) }
-        return request(query, variables).data?.Page?.characters.orEmpty()
-    }
-
     suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
         val query = """
             query {
