@@ -93,7 +93,7 @@ import android.content.Intent
 import android.content.Context
 import android.net.Uri
 import coil.compose.AsyncImage
-import com.rykocollection.app.StreamGurdActivity
+import com.rykocollection.app.safeguard.SafeguardActivity
 import com.rykocollection.app.data.AniListMedia
 import com.rykocollection.app.data.AniListDetail
 import com.rykocollection.app.data.AniListRepository
@@ -102,7 +102,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.rememberHazeState
 
-private enum class MainTab(val label: String) { HOME("Home"), BROWSE("Browse"), STRAWHAT("Strawhat"), NEWS("News"), VIDEO("Video"), LIBRARY("Library"), ACCOUNT("Account") }
+private enum class MainTab(val label: String) { HOME("Home"), BROWSE("Browse"), SAFEGUARD("Safeguard"), NEWS("News"), VIDEO("Video"), LIBRARY("Library"), ACCOUNT("Account") }
 private enum class ExtraPage(val label: String) { TRENDING("Ryko Top Trending"), SETTINGS("Settings") }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,8 +232,8 @@ fun RykoApp() {
                     selectedTab = tab,
                     visible = selectedEntry == null && extraPage == null,
                     onSelect = { item ->
-                        if (item == MainTab.STRAWHAT) {
-                            context.startActivity(Intent(context, StreamGurdActivity::class.java))
+                        if (item == MainTab.SAFEGUARD) {
+                            context.startActivity(Intent(context, SafeguardActivity::class.java))
                         } else {
                             tab = item
                             if (!visitedTabs.contains(item)) visitedTabs.add(item)
@@ -280,10 +280,10 @@ private fun RykoBottomNavigation(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        listOf(MainTab.HOME, MainTab.STRAWHAT, MainTab.NEWS, MainTab.VIDEO, MainTab.ACCOUNT).forEach { item ->
+        listOf(MainTab.HOME, MainTab.SAFEGUARD, MainTab.NEWS, MainTab.VIDEO, MainTab.ACCOUNT).forEach { item ->
             val icon = when (item) {
                 MainTab.HOME -> Icons.Default.Home
-                MainTab.STRAWHAT -> Icons.Default.Shield
+                MainTab.SAFEGUARD -> Icons.Default.Shield
                 MainTab.NEWS -> Icons.Default.Explore
                 MainTab.VIDEO -> Icons.Default.PlayCircle
                 MainTab.ACCOUNT -> Icons.Default.Person
