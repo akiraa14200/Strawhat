@@ -60,13 +60,13 @@ internal object RykoAiQueryRouter {
             character -> RykoAiIntent.CHARACTER
             recommendation -> RykoAiIntent.RECOMMENDATIONS
             details -> RykoAiIntent.DETAILS
-            medium != RykoAiMedium.UNKNOWN -> RykoAiIntent.TITLE_SEARCH
             looksLikeStandaloneEntity -> RykoAiIntent.ENTITY_LOOKUP
+            medium != RykoAiMedium.UNKNOWN -> RykoAiIntent.TITLE_SEARCH
             else -> RykoAiIntent.GENERAL
         }
 
         val query = text
-            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|search|find|please|title|titles|details?|story|plot|synopsis|summary|about|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?|recommendations?|recommend|suggestions?|suggest|top\\s*\\d+|best|underrated|must read|must watch|who is|who's|character|characters|powers of|abilities of|belongs to|from which anime|from which manga|series|latest|news|updates|announcements)\\b"), " ")
+            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|search|find|please|title|titles|details?|story|plot|synopsis|summary|about|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?|tell me|recommendations?|recommend|suggestions?|suggest|top\\s*\\d+|best|underrated|must read|must watch|who is|who's|character|characters|powers of|abilities of|belongs to|from which anime|from which manga|series|latest|news|updates|announcements)\\b"), " ")
             .replace(Regex("(?i)\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports)\\b"), " ")
             .replace(Regex("[?!.:,;]+"), " ")
             .replace(Regex("\\s+"), " ")
