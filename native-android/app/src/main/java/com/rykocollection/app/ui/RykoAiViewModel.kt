@@ -28,7 +28,8 @@ import java.util.concurrent.Executors
 internal data class RykoAiMessage(
     val text: String,
     val fromUser: Boolean,
-    val results: List<AniListMedia> = emptyList()
+    val results: List<AniListMedia> = emptyList(),
+    val resultManga: Boolean? = null
 )
 
 internal data class RykoAiUiState(
@@ -234,21 +235,22 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
             genre != null -> "Here are ${results.size} popular $genre $category picks from AniList:"
             else -> "Here are ${results.size} popular $category picks from AniList:"
         }
-        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(intro, false, results))
+        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(intro, false, results, manga))
     }
 
-    fun addCatalogueResults(prompt: String, results: List<AniListMedia>) {
+    fun addCatalogueResults(prompt: String, results: List<AniListMedia>, manga: Boolean? = null) {
         _state.value = _state.value.copy(
-            messages = _state.value.messages + RykoAiMessage(
+            messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(
                 if (results.isEmpty()) "No matching titles were found in AniList."
                 else "Verified AniList matches for “$prompt”:",
                 false,
-                results
+                results,
+                manga
             )
         )
     }
 
-    fun addMediaDetails(prompt: String, media: AniListMedia, detail: com.rykocollection.app.data.AniListDetail) {
+    fun addMediaDetails(prompt: String, media: AniListMedia, detail: com.rykocollection.app.data.AniListDetail, manga: Boolean) {
         val description = detail.description
             ?.replace(Regex("<[^>]*>"), " ")
             ?.replace(Regex("\\s+"), " ")
@@ -264,8 +266,8 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
             detail.averageScore?.let { "Score $it/100" },
             detail.countryOfOrigin
         ).joinToString(" · ")
-        val answer = "${media.title.display}\\n$facts\\n\\n$description"
-        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(answer, false, listOf(media)))
+        val answer = "${media.title.display}\n$facts\n\n$description"
+        _state.value = _state.value.copy(messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(answer, false, listOf(media), manga))
     }
 
     fun reportCatalogueError() {
