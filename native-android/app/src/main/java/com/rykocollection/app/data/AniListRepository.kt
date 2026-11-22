@@ -36,7 +36,8 @@ data class AniListData(
 @Serializable
 data class AniListPage(
     val media: List<AniListMedia> = emptyList(),
-    val airingSchedules: List<AniListAiring> = emptyList()
+    val airingSchedules: List<AniListAiring> = emptyList(),
+    val characters: List<AniListCharacter> = emptyList()
 )
 
 @Serializable
@@ -365,6 +366,21 @@ class AniListRepository {
             }
         """.trimIndent()
         return request(query, buildJsonObject {}).data?.Media
+    }
+
+    suspend fun searchCharacters(term: String): List<AniListCharacter> {
+        val query = """
+            query($search: String!) {
+              Page(page: 1, perPage: 5) {
+                characters(search: $search, sort: SEARCH_MATCH) {
+                  id name { full } image { large medium }
+                  description(asHtml: false) gender age siteUrl
+                }
+              }
+            }
+        """.trimIndent()
+        val variables = buildJsonObject { put("search", term.trim()) }
+        return request(query, variables).data?.Page?.characters.orEmpty()
     }
 
     suspend fun getCharacters(id: Int, page: Int): List<AniListCharacterEdge> {
