@@ -34,6 +34,11 @@ jobs:
           unzip -q "$ZIP" -d "$INSTALL_DIR"
           echo "$INSTALL_DIR/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
           "$INSTALL_DIR/gradle-${GRADLE_VERSION}/bin/gradle" --version
+      - name: Run Ryko AI routing unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p native-android :app:testDebugUnitTest --no-daemon
       - name: Assemble native debug APK
         shell: bash
         run: |
