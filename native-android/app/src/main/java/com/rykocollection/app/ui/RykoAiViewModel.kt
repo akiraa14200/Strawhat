@@ -57,6 +57,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
     fun ensureReady() {
         if (_state.value.ready || _state.value.downloading || _state.value.initializing) return
         loadJob?.cancel()
+        _state.value = _state.value.copy(downloading = true, downloadProgress = 0f, error = null)
         loadJob = downloadScope.launch {
             try {
                 val modelFile = RykoAiModelDownloader.ensureModel(getApplication()) { progress ->
@@ -89,8 +90,10 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                         }
                         _state.value = _state.value.copy(initializing = false, ready = true, error = null)
                     } catch (error: Exception) {
-                        engine = null
+                        runCatching { conversation?.close() }
                         conversation = null
+                        runCatching { engine?.close() }
+                        engine = null
                         _state.value = _state.value.copy(initializing = false, ready = false, error = error.message ?: "Could not start the on-device model.")
                     }
                 }
