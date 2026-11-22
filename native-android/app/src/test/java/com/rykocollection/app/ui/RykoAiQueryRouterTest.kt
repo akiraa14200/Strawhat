@@ -31,6 +31,12 @@ class RykoAiQueryRouterTest {
     }
 
     @Test
+    fun fandomDiscussionIsNotMistakenForCatalogueSearch() {
+        val route = RykoAiQueryRouter.route("Why are fans arguing about Griffith on Reddit?", mangaMode = false)
+        assertEquals(RykoAiIntent.SOCIAL_DISCUSSION, route.intent)
+    }
+
+    @Test
     fun titleWordsAreNotAggressivelyRemoved() {
         val query = RykoAiQueryRouter.cleanCatalogueQuery("Tell me about The Story of My Life")
         assertEquals("The Story of My Life", query)
