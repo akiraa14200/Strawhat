@@ -111,10 +111,32 @@ internal fun RykoAiPage(
     }
     fun sendPrompt() {
         val prompt = input.trim()
-        if (prompt.isEmpty() || !state.ready || state.sending) return
+        if (prompt.isEmpty() || !state.ready || state.sending || catalogueLoading) return
         input = ""
         keyboard?.hide()
-        aiViewModel.send(prompt)
+        val normalized = prompt.lowercase()
+        val recommendationIntent = Regex("\\b(recommend|recommendation|top\\s*\\d+|best\\s+(anime|manga)|suggest|suggestion|anime list|manga list)\\b").containsMatchIn(normalized) ||
+            Regex("\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports)\\s+(anime|manga)\\b").containsMatchIn(normalized)
+        if (!recommendationIntent) {
+            aiViewModel.send(prompt)
+            return
+        }
+        val genre = listOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
+            .firstOrNull { normalized.contains(it.lowercase()) }
+        catalogueLoading = true
+        scope.launch {
+            val repository = AniListRepository()
+            try {
+                val results = repository.recommendMedia(manga = mangaMode, genre = genre, limit = 5)
+                aiViewModel.addRecommendationResults(prompt, results, mangaMode, genre)
+            } catch (_: Exception) {
+                aiViewModel.addCatalogueResults(prompt, emptyList())
+                aiViewModel.reportCatalogueError()
+            } finally {
+                repository.close()
+                catalogueLoading = false
+            }
+        }
     }
 
     fun searchCatalogue() {
