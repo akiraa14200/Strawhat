@@ -5,7 +5,7 @@ package com.rykocollection.app.ui
  * This runs before local inference and does not require another model.
  */
 internal enum class RykoAiIntent {
-    CHARACTER, DETAILS, RECOMMENDATIONS, TITLE_SEARCH, NEWS, GENERAL
+    CHARACTER, ENTITY_LOOKUP, DETAILS, RECOMMENDATIONS, TITLE_SEARCH, NEWS, GENERAL
 }
 
 internal enum class RykoAiMedium { ANIME, MANGA, MANHWA, MANHUA, WEBTOON, UNKNOWN }
@@ -52,12 +52,16 @@ internal object RykoAiQueryRouter {
         val details = Regex("\\b(details?|story|plot|synopsis|summary|about|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?)\\b")
             .containsMatchIn(normalized)
 
+        val looksLikeStandaloneEntity = text.matches(
+            Regex("^[A-Z][\\p{L}’'-]+(?:\\s+[A-Z][\\p{L}’'-]+){1,3}$")
+        ) && normalized.split(Regex("\\s+")).firstOrNull() !in setOf("i", "the", "what", "who", "why", "how")
         val intent = when {
             news -> RykoAiIntent.NEWS
             character -> RykoAiIntent.CHARACTER
             recommendation -> RykoAiIntent.RECOMMENDATIONS
             details -> RykoAiIntent.DETAILS
             medium != RykoAiMedium.UNKNOWN -> RykoAiIntent.TITLE_SEARCH
+            looksLikeStandaloneEntity -> RykoAiIntent.ENTITY_LOOKUP
             else -> RykoAiIntent.GENERAL
         }
 
