@@ -119,7 +119,10 @@ fun RykoApp() {
     var showExitDialog by remember { mutableStateOf(false) }
     var libraryRefreshToken by remember { mutableStateOf(0) }
 
-    BackHandler {
+    var showRykoAi by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showRykoAi) { showRykoAi = false }
+    BackHandler(enabled = !showRykoAi) {
         when {
             selectedEntry != null -> selectedEntry = null
             extraPage != null -> extraPage = null
@@ -244,6 +247,15 @@ fun RykoApp() {
                     },
                     modifier = Modifier.align(Alignment.BottomCenter).zIndex(20f)
                 )
+            }
+
+            if (showRykoAi) {
+                RykoAiPage(mangaMode = mangaMode, onClose = { showRykoAi = false },
+                    modifier = Modifier.fillMaxSize().zIndex(60f))
+            } else {
+                RykoAiFloatingButton(onClick = { showRykoAi = true },
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(end = 18.dp, bottom = 92.dp).zIndex(50f))
             }
         }
         if (showExitDialog) {
