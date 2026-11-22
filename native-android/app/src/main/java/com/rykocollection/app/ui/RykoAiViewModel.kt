@@ -239,10 +239,19 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addCatalogueResults(prompt: String, results: List<AniListMedia>, manga: Boolean? = null) {
+        val sources = results.mapNotNull { it.sourceLabel }.distinct()
+        val sourceIntro = when {
+            sources.isEmpty() -> "AniList"
+            sources.size == 1 -> sources.first()
+            else -> sources.joinToString(" and ")
+        }
+        val intro = when {
+            results.isEmpty() -> "No matching titles were found in the available catalogues. Try the alternate title or spelling."
+            else -> "Matches from $sourceIntro for “$prompt”:"
+        }
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage(prompt, true) + RykoAiMessage(
-                if (results.isEmpty()) "No matching titles were found in AniList."
-                else "Verified AniList matches for “$prompt”:",
+                intro,
                 false,
                 results,
                 manga
