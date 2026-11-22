@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -204,8 +205,14 @@ internal fun RykoAiPage(
             IconButton(onClick = { searchCatalogue() }, enabled = input.isNotBlank() && !catalogueLoading) {
                 Icon(Icons.Default.Search, contentDescription = "Search AniList catalogue", tint = AiViolet)
             }
-            IconButton(onClick = { sendPrompt() }, enabled = input.isNotBlank() && state.ready && !state.sending) {
-                Icon(Icons.Default.Send, contentDescription = "Send message", tint = AiViolet)
+            if (state.sending) {
+                IconButton(onClick = { aiViewModel.stopGeneration() }) {
+                    Icon(Icons.Default.Stop, contentDescription = "Stop response", tint = Color(0xFFFF9B9B))
+                }
+            } else {
+                IconButton(onClick = { sendPrompt() }, enabled = input.isNotBlank() && state.ready) {
+                    Icon(Icons.Default.Send, contentDescription = "Send message", tint = AiViolet)
+                }
             }
         }
     }
