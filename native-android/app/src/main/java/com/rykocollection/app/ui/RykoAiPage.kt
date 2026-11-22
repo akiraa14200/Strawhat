@@ -25,16 +25,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,14 +53,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rykocollection.app.data.AniListMedia
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rykocollection.app.data.AniListRepository
 import kotlinx.coroutines.launch
 
 private val AiViolet = Color(0xFFA99BFF)
 private val AiMuted = Color(0xFFAAAAB5)
-
-private data class AiChatMessage(val text: String, val fromUser: Boolean, val results: List<AniListMedia> = emptyList())
 
 @Composable
 internal fun RykoAiFloatingButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -73,36 +75,46 @@ internal fun RykoAiFloatingButton(onClick: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-internal fun RykoAiPage(mangaMode: Boolean, onClose: () -> Unit, modifier: Modifier = Modifier) {
-    val messages = remember {
-        mutableStateListOf(AiChatMessage("Hi! I’m Ryko AI. Search the anime and manga catalogue here. Results link directly to their verified AniList pages."))
-    }
+internal fun RykoAiPage(
+    mangaMode: Boolean,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    aiViewModel: RykoAiViewModel = viewModel()
+) {
+    val state by aiViewModel.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
+    var catalogueLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val uriHandler = LocalUriHandler.current
 
+    LaunchedEffect(Unit) { aiViewModel.ensureReady() }
+    DisposableEffect(Unit) {
+        onDispose { aiViewModel.releaseModel() }
+    }
+
     fun sendPrompt() {
         val prompt = input.trim()
-        if (prompt.isEmpty() || loading) return
+        if (prompt.isEmpty() || !state.ready || state.sending) return
         input = ""
         keyboard?.hide()
-        messages.add(AiChatMessage(prompt, true))
-        loading = true
+        aiViewModel.send(prompt)
+    }
+
+    fun searchCatalogue() {
+        val prompt = input.trim()
+        if (prompt.isEmpty() || catalogueLoading) return
+        catalogueLoading = true
+        keyboard?.hide()
         scope.launch {
             val repository = AniListRepository()
             try {
-                val found = repository.searchMedia(prompt, mangaMode).take(6)
-                messages.add(
-                    if (found.isEmpty()) AiChatMessage("No matching titles were found. Try another title or a shorter search.")
-                    else AiChatMessage("These are the closest catalogue matches for “$prompt”. Tap a result to open its AniList page.", results = found)
-                )
+                aiViewModel.addCatalogueResults(prompt, repository.searchMedia(prompt, mangaMode).take(6))
             } catch (_: Exception) {
-                messages.add(AiChatMessage("AniList couldn’t be reached. Catalogue search needs an internet connection; your messages remain in this screen."))
+                aiViewModel.reportCatalogueError()
             } finally {
                 repository.close()
-                loading = false
+                catalogueLoading = false
             }
         }
     }
@@ -112,22 +124,38 @@ internal fun RykoAiPage(mangaMode: Boolean, onClose: () -> Unit, modifier: Modif
             IconButton(onClick = onClose) { Icon(Icons.Default.ArrowBack, contentDescription = "Close Ryko AI", tint = Color.White) }
             Column(Modifier.weight(1f)) {
                 Text("Ryko AI", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Text("Anime & manga companion", color = AiMuted, fontSize = 11.sp)
+                Text("Private on-device anime & manga assistant", color = AiMuted, fontSize = 10.sp)
             }
             Surface(shape = RoundedCornerShape(50), color = Color(0xFF24212F)) {
-                Text("AI ENGINE NEXT", color = AiViolet, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
+                Text("ON-DEVICE", color = AiViolet, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, AiViolet.copy(alpha = .55f), Color.Transparent))))
+
+        if (state.downloading) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text("Installing Ryko AI model · " + (state.downloadProgress * 100).toInt() + "%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                LinearProgressIndicator(progress = { state.downloadProgress }, modifier = Modifier.fillMaxWidth(), color = AiViolet, trackColor = Color(0xFF302D3A))
+                Text("About 614 MB. This is a one-time download; it stays on this device.", color = AiMuted, fontSize = 10.sp)
+            }
+        } else if (state.initializing) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CircularProgressIndicator(color = AiViolet, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text("Preparing the on-device model…", color = AiMuted, fontSize = 12.sp)
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 18.dp)
         ) {
-            items(messages) { message ->
+            items(state.messages) { message ->
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = if (message.fromUser) Alignment.End else Alignment.Start) {
-                    Surface(shape = RoundedCornerShape(18.dp), color = if (message.fromUser) Color(0xFF302A48) else Color(0xFF17171C)) {
-                        Text(message.text, color = Color(0xFFF4F2FA), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(14.dp))
+                    if (message.text.isNotBlank()) {
+                        Surface(shape = RoundedCornerShape(18.dp), color = if (message.fromUser) Color(0xFF302A48) else Color(0xFF17171C)) {
+                            Text(message.text, color = Color(0xFFF4F2FA), fontSize = 14.sp, lineHeight = 21.sp, modifier = Modifier.padding(14.dp))
+                        }
                     }
                     message.results.forEach { media ->
                         Surface(
@@ -147,26 +175,34 @@ internal fun RykoAiPage(mangaMode: Boolean, onClose: () -> Unit, modifier: Modif
                     }
                 }
             }
-            if (loading) {
+            if (state.sending) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         CircularProgressIndicator(color = AiViolet, modifier = Modifier.size(17.dp), strokeWidth = 2.dp)
-                        Text("Searching the catalogue…", color = AiMuted, fontSize = 12.sp)
+                        Text("Ryko AI is thinking…", color = AiMuted, fontSize = 12.sp)
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().background(Color(0xFF101014)).padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+
+        state.error?.let { error ->
+            Text(error, color = Color(0xFFFFB7B7), fontSize = 11.sp, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp))
+            Text("Tap the chat again to retry setup if the model did not finish installing.", color = AiMuted, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 14.dp))
+        }
+
+        Row(Modifier.fillMaxWidth().background(Color(0xFF101014)).padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = input, onValueChange = { input = it }, modifier = Modifier.weight(1f),
-                placeholder = { Text("Search anime or manga…", color = AiMuted) },
-                shape = RoundedCornerShape(18.dp), singleLine = true,
+                placeholder = { Text(if (state.ready) "Ask Ryko AI anything…" else "Preparing model…", color = AiMuted) },
+                shape = RoundedCornerShape(18.dp), singleLine = true, enabled = state.ready && !state.sending,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { sendPrompt() })
             )
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = { sendPrompt() }, enabled = input.isNotBlank() && !loading) {
-                Icon(Icons.Default.Send, contentDescription = "Send search", tint = AiViolet)
+            IconButton(onClick = { searchCatalogue() }, enabled = input.isNotBlank() && !catalogueLoading) {
+                Icon(Icons.Default.Search, contentDescription = "Search AniList catalogue", tint = AiViolet)
+            }
+            IconButton(onClick = { sendPrompt() }, enabled = input.isNotBlank() && state.ready && !state.sending) {
+                Icon(Icons.Default.Send, contentDescription = "Send message", tint = AiViolet)
             }
         }
     }
