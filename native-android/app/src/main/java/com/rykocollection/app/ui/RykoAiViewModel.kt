@@ -42,7 +42,7 @@ internal data class RykoAiUiState(
     val ready: Boolean = false,
     val sending: Boolean = false,
     val error: String? = null,
-    val selectedModelId: String = "qwen3.5-4b-mixed-int4",
+    val selectedModelId: String = "qwen3-0.6b-int4",
     val installedModelIds: Set<String> = emptySet(),
     val downloadingModelId: String? = null
 )
@@ -63,10 +63,10 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         val prefs = getApplication<Application>().getSharedPreferences("ryko_ai", 0)
-        val saved = prefs.getString("selected_model_id", "qwen3.5-4b-mixed-int4") ?: "qwen3.5-4b-mixed-int4"
-        // Upgrade users who were still on the old default; explicit model choices remain intact.
-        val migrated = if (saved == "qwen3-0.6b-int4") "qwen3.5-4b-mixed-int4" else saved
-        val selected = RykoAiModelDownloader.models.firstOrNull { it.id == migrated }?.id ?: "qwen3.5-4b-mixed-int4"
+        val saved = prefs.getString("selected_model_id", "qwen3-0.6b-int4") ?: "qwen3-0.6b-int4"
+        // Migrate users from the previous large model or removed options to the compact model.
+        val migrated = if (saved == "qwen3-0.6b-int4") saved else "qwen3-0.6b-int4"
+        val selected = RykoAiModelDownloader.models.firstOrNull { it.id == migrated }?.id ?: "qwen3-0.6b-int4"
         if (selected != saved) prefs.edit().putString("selected_model_id", selected).apply()
         _state.value = _state.value.copy(selectedModelId = selected, installedModelIds = RykoAiModelDownloader.models.filter { RykoAiModelDownloader.hasModelFile(getApplication(), it.id) }.map { it.id }.toSet())
     }
@@ -93,9 +93,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                             engine = null
                             val cachePath = getApplication<Application>().cacheDir.absolutePath
                             val modelSpec = RykoAiModelDownloader.models.first { it.id == modelId }
-                            // Qwen3.5 4B Mixed INT4 is intentionally CPU-only on 8 GB phones:
-                            // its GPU path can exceed the available memory budget. Smaller models
-                            // still try GPU first and safely fall back to CPU.
+                            // Prefer GPU acceleration for the compact model, with CPU fallback.
                             val candidate = if (!modelSpec.useGpu) {
                                 Engine(
                                     EngineConfig(
