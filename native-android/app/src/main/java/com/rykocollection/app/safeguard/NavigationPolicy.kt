@@ -52,14 +52,18 @@ internal object NavigationPolicy {
         if (raw.isNullOrBlank()) return ""
         return try {
             val host = Uri.parse(raw).host ?: return ""
-            IDN.toASCII(host, IDN.USE_STD3_ASCII_RULES).lowercase(Locale.ROOT).removePrefix("www.")
+            IDN.toASCII(host, IDN.USE_STD3_ASCII_RULES).lowercase(Locale.ROOT)
         } catch (_: Exception) { "" }
     }
 
     fun isSameSite(first: String, second: String): Boolean {
-        val a = first.removePrefix("www.")
-        val b = second.removePrefix("www.")
-        return a.isNotBlank() && b.isNotBlank() && (a == b || a.endsWith(".$b") || b.endsWith(".$a"))
+        return first.isNotBlank() && second.isNotBlank() && first.equals(second, ignoreCase = true)
+    }
+
+    fun isWithinTrustedDomain(host: String, domain: String): Boolean {
+        val normalizedHost = host.lowercase(Locale.ROOT)
+        val normalizedDomain = domain.lowercase(Locale.ROOT).removePrefix("www.")
+        return normalizedHost == normalizedDomain || normalizedHost.endsWith(".$normalizedDomain")
     }
 
     fun isBlockedHost(host: String): Boolean {
@@ -80,7 +84,7 @@ internal object NavigationPolicy {
             return NavigationDecision(NavigationAction.BLOCK, host, "Known advertising or redirect domain")
         }
         if (!protectionEnabled) return NavigationDecision(NavigationAction.ALLOW, host, "Protection is paused")
-        if (trustedDomains.any { isSameSite(host, it) }) {
+        if (trustedDomains.any { isWithinTrustedDomain(host, it) }) {
             return NavigationDecision(NavigationAction.ALLOW, host, "Trusted website")
         }
         val currentHost = hostOf(currentUrl)
@@ -88,7 +92,7 @@ internal object NavigationPolicy {
             return NavigationDecision(NavigationAction.ALLOW, host, "Same website")
         }
         if (userGesture) return NavigationDecision(NavigationAction.ALLOW, host, "Direct user navigation")
-        return NavigationDecision(NavigationAction.ASK, host, "Unrequested cross-site navigation")
+        return NavigationDecision(NavigationAction.BLOCK, host, "Automatic cross-site redirect blocked")
     }
 }
 
