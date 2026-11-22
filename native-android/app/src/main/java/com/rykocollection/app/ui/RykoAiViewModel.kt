@@ -296,10 +296,10 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                     ?: "The catalogue does not provide a character description."
                 buildString {
                     append(character.name.full)
-                    append("\\n\\n")
+                    append("\n\n")
                     append(description)
-                    append("\\n\\nSource: AniList")
-                    character.siteUrl?.takeIf { it.startsWith("https://") }?.let { append("\\n").append(it) }
+                    append("\n\nSource: AniList")
+                    character.siteUrl?.takeIf { it.startsWith("https://") }?.let { append("\n").append(it) }
                 }
             }
         }
