@@ -53,6 +53,12 @@ internal object RykoAiModelDownloader {
         return File(directory(context), model.fileName)
     }
 
+    fun hasModelFile(context: Context, modelId: String): Boolean {
+        val model = models.firstOrNull { it.id == modelId } ?: return false
+        val file = File(directory(context), model.fileName)
+        return file.isFile && file.length() >= model.minimumBytes
+    }
+
     fun isInstalled(context: Context, modelId: String): Boolean {
         val model = models.firstOrNull { it.id == modelId } ?: return false
         val file = File(directory(context), model.fileName)
