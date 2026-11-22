@@ -65,10 +65,16 @@ internal object RykoAiQueryRouter {
             else -> RykoAiIntent.GENERAL
         }
 
+        // Remove only request framing and trailing metadata. Common words such as
+        // "the", "is", "it", "has" and "been" may be part of a real title.
         val query = text
-            .replace(Regex("(?i)\\b(anime|manga|manhwa|manhua|webtoon|search|find|please|title|titles|details?|story|plot|synopsis|summary|about|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?|tell me|is|the|it|currently|finished|ongoing|has|been|recommendations?|recommend|suggestions?|suggest|top\\s*\\d+|best|underrated|must read|must watch|who is|who's|character|characters|powers of|abilities of|belongs to|from which anime|from which manga|series|latest|news|updates|announcements)\\b"), " ")
-            .replace(Regex("(?i)\\b(action|romance|comedy|fantasy|adventure|horror|thriller|mystery|isekai|sports)\\b"), " ")
-            .replace(Regex("[?!.:,;]+"), " ")
+            .replace(Regex("(?i)^\\s*(?:please\\s+)?(?:tell me|give me|show me|find|search for|search|look up)\\s+"), "")
+            .replace(Regex("(?i)^\\s*(?:what is|what's|who is|who's|details of|information about|about|the plot of|the story of)\\s+"), "")
+            .replace(Regex("[?!.:,;]+$"), "")
+            .replace(
+                Regex("(?i)(?:\\s+(?:anime|manga|manhwa|manhua|webtoon|details?|story|plot|synopsis|summary|information|chapters?|volumes?|status|author|artist|release date|published|completed|ending|adaptation|episodes?))+$"),
+                ""
+            )
             .replace(Regex("\\s+"), " ")
             .trim()
 
