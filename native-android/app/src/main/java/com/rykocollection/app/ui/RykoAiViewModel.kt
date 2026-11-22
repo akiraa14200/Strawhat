@@ -169,6 +169,16 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun attachCatalogueResults(results: List<AniListMedia>) {
+        val updated = _state.value.messages.toMutableList()
+        val index = updated.indexOfLast { !it.fromUser }
+        if (index >= 0) {
+            val knownIds = updated[index].results.map { it.id }.toSet()
+            updated[index] = updated[index].copy(results = updated[index].results + results.filterNot { it.id in knownIds })
+            _state.value = _state.value.copy(messages = updated)
+        }
+    }
+
     fun addCatalogueResults(prompt: String, results: List<AniListMedia>) {
         _state.value = _state.value.copy(
             messages = _state.value.messages + RykoAiMessage(
