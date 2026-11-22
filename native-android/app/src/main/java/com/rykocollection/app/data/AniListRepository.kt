@@ -64,7 +64,9 @@ data class AniListMedia(
     val source: String? = null,
     val studios: AniListStudios? = null,
     val characters: AniListCharacters? = null,
-    val trailer: AniListTrailer? = null
+    val trailer: AniListTrailer? = null,
+    val externalUrl: String? = null,
+    val sourceLabel: String? = null
 )
 
 @Serializable
