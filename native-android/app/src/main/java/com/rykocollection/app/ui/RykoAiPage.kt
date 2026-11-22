@@ -34,6 +34,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -159,12 +160,18 @@ internal fun RykoAiPage(
                             color = Color(0xFF17171C), shape = RoundedCornerShape(14.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .07f))
                         ) {
-                            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
+                            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                                AsyncImage(
+                                    model = media.coverImage?.imageUrl,
+                                    contentDescription = media.title.display,
+                                    modifier = Modifier.width(64.dp).height(88.dp).clip(RoundedCornerShape(9.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(media.title.display, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                     Text(listOfNotNull(media.format, media.seasonYear?.toString(), media.averageScore?.let { "Score $it" }).joinToString(" · "), color = AiMuted, fontSize = 10.sp)
+                                    Text("Open verified AniList entry ↗", color = AiViolet, fontSize = 10.sp)
                                 }
-                                Text("AniList ↗", color = AiViolet, fontSize = 11.sp)
                             }
                         }
                     }
