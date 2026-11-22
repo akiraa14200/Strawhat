@@ -236,6 +236,24 @@ class AniListRepository {
         return request(query, variables).data?.Page?.media.orEmpty()
     }
 
+
+    suspend fun recommendMedia(manga: Boolean = false, genre: String? = null, limit: Int = 5): List<AniListMedia> {
+        val genreFilter = if (genre.isNullOrBlank()) "" else ", genre_in: [\"$genre\"]"
+        val query = """
+            query($type: MediaType!) {
+              Page(page: 1, perPage: ${limit}) {
+                media(type: $type, sort: POPULARITY_DESC, isAdult: false${genreFilter}) {
+                  id title { english romaji native }
+                  coverImage { large extraLarge }
+                  averageScore format seasonYear genres
+                }
+              }
+            }
+        """.trimIndent()
+        val variables = buildJsonObject { put("type", if (manga) "MANGA" else "ANIME") }
+        return request(query, variables).data?.Page?.media.orEmpty()
+    }
+
     suspend fun latestAiringEpisodes(): List<AniListAiring> {
         val query = """
             query {
