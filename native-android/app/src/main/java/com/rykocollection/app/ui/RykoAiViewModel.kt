@@ -40,7 +40,10 @@ internal data class RykoAiUiState(
     val initializing: Boolean = false,
     val ready: Boolean = false,
     val sending: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val selectedModelId: String = "qwen3-0.6b-int4",
+    val installedModelIds: Set<String> = emptySet(),
+    val downloadingModelId: String? = null
 )
 
 internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
@@ -55,6 +58,14 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
     private var conversation: Conversation? = null
     private var loadJob: Job? = null
     private var generationJob: Job? = null
+    private var loadedModelId: String? = null
+
+    init {
+        val prefs = getApplication<Application>().getSharedPreferences("ryko_ai", 0)
+        val saved = prefs.getString("selected_model_id", "qwen3-0.6b-int4") ?: "qwen3-0.6b-int4"
+        val selected = RykoAiModelDownloader.models.firstOrNull { it.id == saved }?.id ?: "qwen3-0.6b-int4"
+        _state.value = _state.value.copy(selectedModelId = selected, installedModelIds = RykoAiModelDownloader.models.filter { RykoAiModelDownloader.isInstalled(getApplication(), it.id) }.map { it.id }.toSet())
+    }
 
     fun ensureReady() {
         if (_state.value.ready || _state.value.downloading || _state.value.initializing) return
@@ -62,13 +73,20 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(downloading = true, downloadProgress = 0f, error = null)
         loadJob = downloadScope.launch {
             try {
-                val modelFile = RykoAiModelDownloader.ensureModel(getApplication()) { progress ->
-                    _state.value = _state.value.copy(downloading = true, downloadProgress = progress, error = null)
+                val modelId = _state.value.selectedModelId
+                _state.value = _state.value.copy(downloadingModelId = modelId)
+                val modelFile = RykoAiModelDownloader.ensureModel(getApplication(), modelId) { progress ->
+                    _state.value = _state.value.copy(downloading = true, downloadProgress = progress, downloadingModelId = modelId, error = null)
                 }
+                _state.value = _state.value.copy(installedModelIds = _state.value.installedModelIds + modelId, downloadingModelId = null)
                 _state.value = _state.value.copy(downloading = false, initializing = true, error = null)
                 engineScope.launch {
                     try {
-                        if (engine == null) {
+                        if (engine == null || loadedModelId != modelId) {
+                            runCatching { conversation?.close() }
+                            conversation = null
+                            runCatching { engine?.close() }
+                            engine = null
                             val cachePath = getApplication<Application>().cacheDir.absolutePath
                             // Prefer the on-device GPU delegate when LiteRT-LM can initialize it.
                             // Some phones/drivers do not support this model on GPU, so retain a
@@ -98,6 +116,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                                 ).also { it.initialize() }
                             }
                             engine = candidate
+                            loadedModelId = modelId
                             conversation = candidate.createConversation(
                                 ConversationConfig(
                                     systemInstruction = Contents.of(
@@ -116,15 +135,44 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
                         conversation = null
                         runCatching { engine?.close() }
                         engine = null
+                        loadedModelId = null
                         _state.value = _state.value.copy(initializing = false, ready = false, error = error.message ?: "Could not start the on-device model.")
                     }
                 }
             } catch (error: Exception) {
-                _state.value = _state.value.copy(downloading = false, initializing = false, ready = false, error = error.message ?: "Model download failed.")
+                _state.value = _state.value.copy(downloading = false, initializing = false, ready = false, downloadingModelId = null, error = error.message ?: "Model download failed.")
             }
         }
     }
 
+    fun downloadModel(modelId: String) {
+        if (modelId == _state.value.selectedModelId) { ensureReady(); return }
+        if (_state.value.downloading || _state.value.initializing) return
+        downloadScope.launch {
+            try {
+                _state.value = _state.value.copy(downloading = true, downloadProgress = 0f, downloadingModelId = modelId, error = null)
+                RykoAiModelDownloader.download(getApplication(), modelId) { progress ->
+                    _state.value = _state.value.copy(downloadProgress = progress, downloading = true, downloadingModelId = modelId)
+                }
+                _state.value = _state.value.copy(downloading = false, downloadingModelId = null, installedModelIds = _state.value.installedModelIds + modelId)
+            } catch (error: Exception) {
+                _state.value = _state.value.copy(downloading = false, downloadingModelId = null, error = error.message ?: "Model download failed.")
+            }
+        }
+    }
+
+    fun selectModel(modelId: String) {
+        if (RykoAiModelDownloader.models.none { it.id == modelId }) return
+        if (_state.value.downloading || _state.value.initializing || _state.value.sending) return
+        getApplication<Application>().getSharedPreferences("ryko_ai", 0).edit().putString("selected_model_id", modelId).apply()
+        _state.value = _state.value.copy(selectedModelId = modelId, ready = false, error = null)
+        loadJob?.cancel()
+        engineScope.launch {
+            runCatching { conversation?.close() }; conversation = null
+            runCatching { engine?.close() }; engine = null; loadedModelId = null
+            ensureReady()
+        }
+    }
     fun send(text: String) {
         val prompt = text.trim()
         if (prompt.isEmpty() || !_state.value.ready || _state.value.sending) return
@@ -209,6 +257,7 @@ internal class RykoAiViewModel(app: Application) : AndroidViewModel(app) {
             conversation = null
             engine?.close()
             engine = null
+            loadedModelId = null
             _state.value = _state.value.copy(ready = false, initializing = false, sending = false)
         }
     }
