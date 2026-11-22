@@ -236,19 +236,27 @@ class AniListRepository {
         return request(query, variables).data?.Page?.media.orEmpty()
     }
 
-    suspend fun recommendMedia(manga: Boolean = false, genre: String? = null, limit: Int = 5): List<AniListMedia> {
+    suspend fun recommendMedia(
+        manga: Boolean = false,
+        genre: String? = null,
+        limit: Int = 5,
+        manhwa: Boolean = false
+    ): List<AniListMedia> {
         val allowedGenres = setOf("Action", "Romance", "Comedy", "Fantasy", "Adventure", "Horror", "Thriller", "Mystery", "Isekai", "Sports")
         val safeGenre = genre?.takeIf { it in allowedGenres }
-        val genreFilter = safeGenre?.let { ", genre_in: [\"$it\"]" } ?: ""
+        val genreFilter = safeGenre?.let { ", genre_in: [\\"$it\\"]" } ?: ""
         val mediaType = if (manga) "MANGA" else "ANIME"
+        // AniList stores Korean webtoons/manhwa under MANGA; countryOfOrigin=KR
+        // filters actual Korean-origin entries rather than relabelling Japanese manga.
+        val originFilter = if (manga && manhwa) ", countryOfOrigin: KR" else ""
         val safeLimit = limit.coerceIn(1, 10)
         val query = """
             query {
               Page(page: 1, perPage: $safeLimit) {
-                media(type: $mediaType, sort: POPULARITY_DESC, isAdult: false$genreFilter) {
+                media(type: $mediaType, sort: POPULARITY_DESC, isAdult: false$genreFilter$originFilter) {
                   id title { english romaji native }
                   coverImage { large extraLarge }
-                  averageScore format seasonYear genres
+                  averageScore format seasonYear chapters volumes status genres countryOfOrigin
                 }
               }
             }
@@ -310,14 +318,19 @@ class AniListRepository {
             }
     }
 
-    suspend fun searchMedia(term: String, manga: Boolean = false): List<AniListMedia> {
+    suspend fun searchMedia(
+        term: String,
+        manga: Boolean = false,
+        manhwa: Boolean = false
+    ): List<AniListMedia> {
+        val originFilter = if (manga && manhwa) ", countryOfOrigin: KR" else ""
         val query = """
-            query(${'$'}search: String!, ${'$'}type: MediaType!, ${'$'}page: Int!) {
-              Page(page: ${'$'}page, perPage: 30) {
-                media(search: ${'$'}search, type: ${'$'}type, sort: SEARCH_MATCH, isAdult: false) {
+            query($search: String!, $type: MediaType!, $page: Int!) {
+              Page(page: $page, perPage: 30) {
+                media(search: $search, type: $type, sort: SEARCH_MATCH, isAdult: false$originFilter) {
                   id title { english romaji native }
                   coverImage { large extraLarge }
-                  averageScore format seasonYear status genres
+                  averageScore format seasonYear status genres chapters volumes countryOfOrigin
                   trailer { id site thumbnail }
                 }
               }
