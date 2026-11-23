@@ -210,8 +210,7 @@ class TubePlayerActivity : ComponentActivity() {
                     player.loadVideo(currentVideoId, 0f)
                     // YouTube may block embedded playback with an account/anti-bot check.
                     // Never bypass that check; offer the official YouTube app as a fallback.
-                    mainHandler.removeCallbacks(playbackFallbackRunnable)
-                    mainHandler.postDelayed(playbackFallbackRunnable, 18_000L)
+                    schedulePlaybackFallback()
                 }
 
                 override fun onStateChange(player: YouTubePlayer, state: PlayerConstants.PlayerState) {
@@ -740,8 +739,7 @@ class TubePlayerActivity : ComponentActivity() {
         currentVideoId = shortQueue[next]
         hasPlaybackStarted = false
         playbackFallbackShown = false
-        mainHandler.removeCallbacks(playbackFallbackRunnable)
-        mainHandler.postDelayed(playbackFallbackRunnable, 18_000L)
+        schedulePlaybackFallback()
         currentTitle = shortTitles.getOrNull(next).orEmpty().ifBlank { "Short video" }
         currentCreator = shortCreators.getOrNull(next).orEmpty()
         shortTitleOverlay?.text = currentTitle
@@ -825,18 +823,23 @@ class TubePlayerActivity : ComponentActivity() {
         }
     }
 
+    private fun schedulePlaybackFallback() {
+        mainHandler.removeCallbacks(playbackFallbackRunnable)
+        // Allow slower connections more time before offering the official-app fallback.
+        mainHandler.postDelayed(playbackFallbackRunnable, 30_000L)
+    }
+
     private fun showPlaybackFallback(force: Boolean = false) {
         if (playbackFallbackShown || isFinishing || isDestroyed || (!force && hasPlaybackStarted)) return
         playbackFallbackShown = true
         AlertDialog.Builder(this)
-            .setTitle("YouTube needs verification")
-            .setMessage("YouTube may require sign-in or additional verification for this video. RykoCollection cannot complete or bypass that check inside the embedded player. You can open the same video in the official YouTube app, then return here.")
+            .setTitle("Playback couldn't start")
+            .setMessage("The embedded player has not started this video yet. It may be buffering, unavailable for embedding, or require sign-in or verification. You can retry here or continue in the official YouTube app.")
             .setNegativeButton("Retry here") { _, _ ->
                 playbackFallbackShown = false
                 hasPlaybackStarted = false
                 youTubePlayer?.loadVideo(currentVideoId, 0f)
-                mainHandler.removeCallbacks(playbackFallbackRunnable)
-                mainHandler.postDelayed(playbackFallbackRunnable, 18_000L)
+                schedulePlaybackFallback()
             }
             .setPositiveButton("Open YouTube") { _, _ -> openCurrentVideoInYouTube() }
             .setOnCancelListener { playbackFallbackShown = false }
@@ -869,6 +872,19 @@ class TubePlayerActivity : ComponentActivity() {
             return
         }
         super.onBackPressed()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // A delayed fallback should only run while this player screen is visible.
+        if (youTubePlayer != null && !hasPlaybackStarted && !playbackFallbackShown) {
+            schedulePlaybackFallback()
+        }
+    }
+
+    override fun onStop() {
+        mainHandler.removeCallbacks(playbackFallbackRunnable)
+        super.onStop()
     }
 
     override fun onDestroy() {
