@@ -3,7 +3,7 @@ name: Build RykoCollection Native Android (Strawhat)
 on:
   workflow_dispatch:
   push:
-    branches: [integrated-native]
+    branches: [integrated-native, yt-player]
     paths:
       - 'native-android/**'
       - '.github/workflows/android-native.yml'
