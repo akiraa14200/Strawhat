@@ -1,4 +1,4 @@
-name: Build RykoCollection Native Android (Strawhat)
+name: Build RykoCollection Native Android (Strawhat) - Firefox Sites compatibility
 
 on:
   workflow_dispatch:
