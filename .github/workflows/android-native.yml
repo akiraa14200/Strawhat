@@ -54,6 +54,11 @@ jobs:
           done
           echo "Play App Bundle:"
           find native-android/app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -exec du -h {} \;
+          echo "Largest files inside ARM64 release APK:"
+          APK="$(find native-android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [ -n "$APK" ]; then
+            unzip -l "$APK" | sort -nr | head -n 25
+          fi
 
       - name: Upload optimized release outputs
         uses: actions/upload-artifact@v4
@@ -73,6 +78,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RykoCollection-Strawhat-debug-APK
-          path: native-android/app/build/outputs/apk/debug/app-debug.apk
+          path: native-android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
