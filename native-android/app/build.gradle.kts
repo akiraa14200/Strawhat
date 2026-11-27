@@ -5,9 +5,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-// GitHub Actions defines the secret environment variable even when the secret is
-// missing. Gradle's orElse() treats an empty value as present, so explicitly
-// reject blank values before falling back.
 val supabaseUrl = providers.gradleProperty("SUPABASE_URL").orNull?.takeIf { it.isNotBlank() }
     ?: providers.environmentVariable("SUPABASE_URL").orNull?.takeIf { it.isNotBlank() }
     ?: "https://moicrqcddmftjgwjqkvz.supabase.co"
@@ -31,7 +28,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0-native"
-
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
     }
@@ -67,13 +63,13 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-
-    // Source-backed backdrop blur, compatible with the current Android build toolchain.
     implementation("dev.chrisbanes.haze:haze:1.7.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
-
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
+
+    // Mozilla GeckoView: Firefox's Android browser engine.
+    implementation("org.mozilla.geckoview:geckoview:161.0.20261118180411")
 
     implementation(platform("io.github.jan-tennert.supabase:bom:3.5.0"))
     implementation("io.github.jan-tennert.supabase:auth-kt")
