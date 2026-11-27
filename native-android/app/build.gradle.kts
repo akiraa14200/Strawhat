@@ -46,6 +46,24 @@ android {
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
     }
 
+    buildTypes {
+        getByName("debug") {
+            // Keep debug builds unshrunk for reliable development and diagnostics.
+        }
+        getByName("release") {
+            // Optimized release variant. CI signs this with the temporary debug key
+            // only so the APK can be installed for size/runtime testing.
+            // Replace with a private upload key before Play Store publication.
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
