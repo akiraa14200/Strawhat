@@ -44,6 +44,17 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p native-android :app:assembleRelease :app:bundleRelease --no-daemon
+      - name: Report optimized package sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Release APK outputs:"
+          find native-android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print0 | while IFS= read -r -d '' file; do
+            du -h "$file"
+          done
+          echo "Play App Bundle:"
+          find native-android/app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -exec du -h {} \;
+
       - name: Upload optimized release outputs
         uses: actions/upload-artifact@v4
         with:
