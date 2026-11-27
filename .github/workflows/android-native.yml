@@ -39,11 +39,11 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p native-android :app:testDebugUnitTest --no-daemon
-      - name: Assemble optimized release APK and Play Store bundle
+      - name: Assemble optimized release APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p native-android :app:assembleRelease :app:bundleRelease --no-daemon
+          gradle -p native-android :app:assembleRelease --no-daemon
       - name: Report optimized package sizes
         shell: bash
         run: |
@@ -52,8 +52,6 @@ jobs:
           find native-android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print0 | while IFS= read -r -d '' file; do
             du -h "$file"
           done
-          echo "Play App Bundle:"
-          find native-android/app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -exec du -h {} \;
           echo "Largest files inside ARM64 release APK:"
           APK="$(find native-android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
           if [ -n "$APK" ]; then
@@ -66,7 +64,6 @@ jobs:
           name: RykoCollection-Strawhat-optimized-release-test
           path: |
             native-android/app/build/outputs/apk/release/*.apk
-            native-android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
       - name: Assemble debug APK
