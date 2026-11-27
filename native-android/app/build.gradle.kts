@@ -18,6 +18,20 @@ kotlin {
     }
 }
 
+// Keep transitive AndroidX versions aligned with AGP 8.13.2 / compileSdk 36.
+configurations.configureEach {
+    resolutionStrategy.force(
+        "androidx.core:core:1.17.0",
+        "androidx.core:core-ktx:1.17.0",
+        "androidx.lifecycle:lifecycle-runtime:2.10.0",
+        "androidx.lifecycle:lifecycle-runtime-ktx:2.10.0",
+        "androidx.lifecycle:lifecycle-runtime-compose:2.10.0",
+        "androidx.lifecycle:lifecycle-viewmodel:2.10.0",
+        "androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0",
+        "androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
+    )
+}
+
 android {
     namespace = "com.rykocollection.app"
     compileSdk = 36
@@ -69,7 +83,7 @@ dependencies {
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
 
     // Mozilla GeckoView: Firefox's Android browser engine.
-    implementation("org.mozilla.geckoview:geckoview:161.0.20261118180411")
+    implementation("org.mozilla.geckoview:geckoview:139.0.20250609112858")
 
     implementation(platform("io.github.jan-tennert.supabase:bom:3.5.0"))
     implementation("io.github.jan-tennert.supabase:auth-kt")
